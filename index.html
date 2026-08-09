@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevMe — Cargando...</title>
+  <style>
+    body { margin: 0; background: #fcfbf8; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+    .loader { text-align: center; color: #9c8749; }
+  </style>
+  <script>
+    (function() {
+      var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (window.innerWidth <= 768 && 'ontouchstart' in window);
+      var path = window.location.pathname;
+      var base = path.substring(0, path.lastIndexOf('/') + 1);
+      
+      if (isMobile) {
+        window.location.replace(base + 'mobile/index.html');
+      } else {
+        window.location.replace(base + 'desktop/index.html');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div class="loader">
+    <p>DevMe — Detectando dispositivo...</p>
+  </div>
+</body>
+</html>
