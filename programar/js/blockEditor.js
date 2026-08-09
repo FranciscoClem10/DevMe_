@@ -302,47 +302,6 @@
       case 'llamar': return blk.fields.name + '(' + blk.fields.args + ')';
       case 'asignar_arr': return blk.fields.name + '[' + blk.fields.idx + '] <- ' + blk.fields.value;
       case 'comentario': return '//' + blk.fields.text;
-      // --- Bloques del juego ---
-      case 'game_avanzar': return 'avanzar()';
-      case 'game_girar': return 'girar(' + (blk.fields.angle || '90') + ')';
-      case 'game_empujar': return 'empujar()';
-      case 'game_mover': return 'mover(' + (blk.fields.dir || 'derecha') + ')';
-      case 'game_tomar': return 'tomar()';
-      case 'game_soltar': return 'soltar()';
-      case 'game_activar': return 'activar()';
-      case 'game_desactivar': return 'desactivar()';
-      case 'game_abrir': return 'abrir()';
-      case 'game_cerrar': return 'cerrar()';
-      case 'game_usar': return 'usar()';
-      case 'game_esperar_accion': return 'esperar(' + (blk.fields.tiempo || '1') + ')';
-      case 'game_decir': return 'decir(' + (blk.fields.msg || '"Hola"') + ')';
-      case 'game_frentelibre': return 'frenteLibre()';
-      case 'game_haycaja': return 'hayCaja()';
-      case 'game_haypuerta': return 'hayPuerta()';
-      case 'game_puertaabierta': return 'puertaAbierta()';
-      case 'game_hayswitch': return 'haySwitch()';
-      case 'game_llevoobjeto': return 'llevoObjeto()';
-      case 'game_objetivocompleto': return 'objetivoCompleto()';
-      case 'game_posicionx': return 'posicionX()';
-      case 'game_posiciony': return 'posicionY()';
-      case 'game_direccionj': return 'direccionJ()';
-      case 'game_entregar': return 'entregar()';
-      case 'game_hablar': return 'hablar()';
-      case 'game_hayitem': return 'hayItem()';
-      case 'game_haynpc': return 'hayNPC()';
-      case 'game_puertabloqueada': return 'puertaBloqueada()';
-      case 'game_puertaprotegida': return 'puertaProtegida()'; // puerta controlada por señal
-      case 'game_llevollave': return 'llevoLlave()';
-      case 'game_llevocaja': return 'llevoCaja()';
-      case 'game_hayitemen': return 'hayItemEn(' + (blk.fields.x || '0') + ', ' + (blk.fields.y || '0') + ')';
-      case 'game_hayenemigo': return 'hayEnemigo()';
-      case 'game_haypiston': return 'hayPiston()';
-      case 'game_enemigoactivo': return 'enemigoActivo()';
-      case 'game_pistonactivo': return 'pistonActivo()';
-      case 'game_inventariotamanio': return 'inventarioTamanio()';
-      case 'game_obtenerinventario': return 'obtenerInventario(' + (blk.fields.pos || '1') + ')';
-      case 'game_moverinventario': return 'moverInventario(' + (blk.fields.origen || '1') + ', ' + (blk.fields.destino || '2') + ')';
-      case 'game_intercambiarinventario': return 'intercambiarInventario(' + (blk.fields.pos1 || '1') + ', ' + (blk.fields.pos2 || '2') + ')';
       default: return '// bloque desconocido';
     }
   }
@@ -1344,69 +1303,12 @@
           addParsedBlock(currentTarget(), 'comentario', { text: line.substring(2) }, sourceLine);
         } else if (lower.startsWith('limpiar pantalla')) {
           addParsedBlock(currentTarget(), 'limpiar', undefined, sourceLine);
-        } else if (lower.match(/^[a-z_áéíóúñ]\w*\s*\(/)) {
-          // Detectar llamadas a funciones y mapearlas a bloques específicos si corresponde
+        } else if (lower.match(/^[a-z_]\w*\s*\(/)) {
           const pi = line.indexOf('(');
-          const fnName = line.substring(0, pi).trim().toLowerCase();
-          const argsStr = line.substring(pi + 1, line.lastIndexOf(')')).trim();
-          // Mapeo de funciones del juego a bloques específicos
-          const GAME_FN_MAP = {
-            'avanzar': 'game_avanzar',
-            'tomar': 'game_tomar',
-            'soltar': 'game_soltar',
-            'activar': 'game_activar',
-            'desactivar': 'game_desactivar',
-            'abrir': 'game_abrir',
-            'cerrar': 'game_cerrar',
-            'usar': 'game_usar',
-            'entregar': 'game_entregar',
-            'hablar': 'game_hablar',
-            'empujar': 'game_empujar',
-            'frentelibre': 'game_frentelibre',
-            'haycaja': 'game_haycaja',
-            'hayobjeto': 'game_haycaja',
-            'hayitem': 'game_hayitem',
-            'haypuerta': 'game_haypuerta',
-            'puertaabierta': 'game_puertaabierta',
-            'puertabloqueada': 'game_puertabloqueada',
-            'puertaprotegida': 'game_puertaprotegida',
-            'hayswitch': 'game_hayswitch',
-            'haynpc': 'game_haynpc',
-            'llevoobjeto': 'game_llevoobjeto',
-            'llevocaja': 'game_llevocaja',
-            'llevollave': 'game_llevollave',
-            'objetivocompleto': 'game_objetivocompleto',
-            'posicionx': 'game_posicionx',
-            'posiciony': 'game_posiciony',
-            'direccionj': 'game_direccionj',
-            'hayenemigo': 'game_hayenemigo',
-            'haypiston': 'game_haypiston',
-            'enemigoactivo': 'game_enemigoactivo',
-            'pistonactivo': 'game_pistonactivo',
-            'inventariotamanio': 'game_inventariotamanio',
-            'obtenerinventario': 'game_obtenerinventario',
-            'moverinventario': 'game_moverinventario',
-            'intercambiarinventario': 'game_intercambiarinventario'
-          };
-          if (GAME_FN_MAP[fnName]) {
-            addParsedBlock(currentTarget(), GAME_FN_MAP[fnName], undefined, sourceLine);
-          } else if (fnName === 'girar') {
-            addParsedBlock(currentTarget(), 'game_girar', { angle: argsStr || '90' }, sourceLine);
-          } else if (fnName === 'mover') {
-            addParsedBlock(currentTarget(), 'game_mover', { dir: argsStr || 'derecha' }, sourceLine);
-          } else if (fnName === 'esperar' && argsStr) {
-            addParsedBlock(currentTarget(), 'game_esperar_accion', { tiempo: argsStr }, sourceLine);
-          } else if (fnName === 'decir') {
-            addParsedBlock(currentTarget(), 'game_decir', { msg: argsStr || '"..."' }, sourceLine);
-          } else if (fnName === 'hayitemen') {
-            const parts = argsStr.split(',').map(s => s.trim());
-            addParsedBlock(currentTarget(), 'game_hayitemen', { x: parts[0] || '0', y: parts[1] || '0' }, sourceLine);
-          } else {
-            addParsedBlock(currentTarget(), 'llamar', {
-              name: line.substring(0, pi).trim(),
-              args: argsStr
-            }, sourceLine);
-          }
+          addParsedBlock(currentTarget(), 'llamar', {
+            name: line.substring(0, pi).trim(),
+            args: line.substring(pi + 1, line.lastIndexOf(')')).trim()
+          }, sourceLine);
         }
       }
     }
@@ -1469,302 +1371,40 @@
 
   /* ───── Fallback definitions (if JSON fails to load) ───── */
   const fallbackDefs = {
-  categories: {
-    structure: { name: "Estructura", icon: "account_tree" },
-    game:      { name: "Juego", icon: "sports_esports" },
-    game_query:{ name: "Consultas Juego", icon: "question_mark" },
-    var:       { name: "Variables", icon: "variable_insert" },
-    io:        { name: "Entrada/Salida", icon: "import_export" },
-    condition: { name: "Condiciones", icon: "fork_right" },
-    loop:      { name: "Bucles", icon: "repeat" },
-    math:      { name: "Matematicas", icon: "calculate" },
-    function:  { name: "Funciones", icon: "settings_applications" },
-    array:     { name: "Arreglos", icon: "view_list" },
-    comment:   { name: "Comentarios", icon: "comment" }
-  },
-  blocks: {
-    algoritmo_inicio: {
-      category: "structure",
-      label: "Algoritmo",
-      icon: "play_circle",
-      isStructure: true,
-      isContainer: true,
-      endLabel: "FinAlgoritmo",
-      fields: { name: { label: "Nombre", default: "MiAlgoritmo" } }
+    categories: {
+      structure: { name: "Estructura", icon: "account_tree" },
+      var: { name: "Variables", icon: "variable_insert" },
+      io: { name: "Entrada/Salida", icon: "import_export" },
+      condition: { name: "Condiciones", icon: "fork_right" },
+      loop: { name: "Bucles", icon: "repeat" },
+      math: { name: "Matematicas", icon: "calculate" },
+      function: { name: "Funciones", icon: "settings_applications" },
+      array: { name: "Arreglos", icon: "view_list" },
+      comment: { name: "Comentarios", icon: "comment" }
     },
-    subproceso: {
-      category: "structure",
-      label: "SubProceso",
-      icon: "settings_applications",
-      isStructure: true,
-      isContainer: true,
-      endLabel: "FinSubProceso",
-      fields: { name: { label: "Nombre", default: "miSub" }, params: { label: "Parametros", default: "" } }
-    },
-    funcion: {
-      category: "structure",
-      label: "Funcion",
-      icon: "functions",
-      isStructure: true,
-      isContainer: true,
-      endLabel: "FinFuncion",
-      fields: { name: { label: "Nombre", default: "miFunc" }, params: { label: "Parametros", default: "n" } }
-    },
-    definir: {
-      category: "var",
-      label: "Definir",
-      icon: "variable_insert",
-      fields: { name: { label: "Nombre", default: "x" }, type: { label: "Tipo", default: "Entero" } }
-    },
-    constante: {
-      category: "var",
-      label: "Constante",
-      icon: "lock",
-      fields: { name: { label: "Nombre", default: "PI" }, value: { label: "Valor", default: "3.1416" } }
-    },
-    dimension: {
-      category: "var",
-      label: "Dimension",
-      icon: "grid_on",
-      fields: { name: { label: "Nombre", default: "arr" }, range: { label: "Rango", default: "1..10" } }
-    },
-    asignar: {
-      category: "var",
-      label: "Asignar",
-      icon: "arrow_right_alt",
-      fields: { target: { label: "Variable", default: "x" }, value: { label: "Valor", default: "0" } }
-    },
-    escribir: {
-      category: "io",
-      label: "Escribir",
-      icon: "print",
-      fields: { msg: { label: "Mensaje", default: "\"Hola\"" } }
-    },
-    escribir_sin: {
-      category: "io",
-      label: "Escribir Sin Saltar",
-      icon: "print",
-      fields: { msg: { label: "Mensaje", default: "\"Hola\"" } }
-    },
-    leer: {
-      category: "io",
-      label: "Leer",
-      icon: "input",
-      fields: { var: { label: "Variable", default: "x" } }
-    },
-    limpiar: {
-      category: "io",
-      label: "Limpiar Pantalla",
-      icon: "cleaning_services",
-      fields: {}
-    },
-    si: {
-      category: "condition",
-      label: "Si...Entonces",
-      icon: "fork_right",
-      isContainer: true,
-      hasElse: true,
-      endLabel: "FinSi",
-      fields: { cond: { label: "Condicion", default: "x > 0" } }
-    },
-    sino_si: {
-      category: "condition",
-      label: "Sino Si",
-      icon: "alt_route",
-      isContainer: true,
-      hasElse: false,
-      endLabel: "",
-      fields: { cond: { label: "Condicion", default: "x < 0" } }
-    },
-    segun: {
-      category: "condition",
-      label: "Segun",
-      icon: "alt_route",
-      isContainer: true,
-      endLabel: "FinSegun",
-      fields: { var: { label: "Variable", default: "opcion" } }
-    },
-    mientras: {
-      category: "loop",
-      label: "Mientras",
-      icon: "repeat",
-      isContainer: true,
-      endLabel: "FinMientras",
-      fields: { cond: { label: "Condicion", default: "x < 10" } }
-    },
-    repetir: {
-      category: "loop",
-      label: "Repetir",
-      icon: "replay",
-      isContainer: true,
-      endLabel: "Hasta Que",
-      fields: { cond: { label: "Condicion", default: "x > 0" } }
-    },
-    para: {
-      category: "loop",
-      label: "Para",
-      icon: "loop",
-      isContainer: true,
-      endLabel: "FinPara",
-      fields: { var: { label: "Variable", default: "i" }, start: { label: "Desde", default: "1" }, end: { label: "Hasta", default: "10" }, step: { label: "Paso", default: "1" } }
-    },
-    asignar_math: {
-      category: "math",
-      label: "Operacion",
-      icon: "calculate",
-      fields: { target: { label: "Variable", default: "resultado" }, expr: { label: "Expresion", default: "a + b" } }
-    },
-    llamar: {
-      category: "function",
-      label: "Llamar",
-      icon: "call",
-      fields: { name: { label: "Nombre", default: "miSub" }, args: { label: "Args", default: "" } }
-    },
-    asignar_arr: {
-      category: "array",
-      label: "Asignar Arreglo",
-      icon: "view_list",
-      fields: { name: { label: "Arreglo", default: "arr" }, idx: { label: "Indice", default: "i" }, value: { label: "Valor", default: "0" } }
-    },
-    game_avanzar: {
-      category: "game",
-      label: "Avanzar",
-      icon: "arrow_forward",
-      fields: {}
-    },
-    game_girar: {
-      category: "game",
-      label: "Girar",
-      icon: "rotate_left",
-      fields: { angle: { label: "Angulo", default: "90" } }
-    },
-    game_mover: {
-      category: "game",
-      label: "Mover",
-      icon: "open_with",
-      fields: { dir: { label: "Direccion", default: "derecha" } }
-    },
-    game_tomar: {
-      category: "game",
-      label: "Tomar",
-      icon: "select_all",
-      fields: {}
-    },
-    game_soltar: {
-      category: "game",
-      label: "Soltar",
-      icon: "deselect",
-      fields: {}
-    },
-    game_activar: {
-      category: "game",
-      label: "Activar",
-      icon: "bolt",
-      fields: {}
-    },
-    game_desactivar: {
-      category: "game",
-      label: "Desactivar",
-      icon: "bolt",
-      fields: {}
-    },
-    game_abrir: {
-      category: "game",
-      label: "Abrir Puerta",
-      icon: "door_open",
-      fields: {}
-    },
-    game_cerrar: {
-      category: "game",
-      label: "Cerrar Puerta",
-      icon: "door_open",   // Cambiado a door_open
-      fields: {}
-    },
-    game_usar: {
-      category: "game",
-      label: "Usar",
-      icon: "handshake",
-      fields: {}
-    },
-    game_esperar_accion: {
-      category: "game",
-      label: "Esperar",
-      icon: "hourglass_empty",
-      fields: { tiempo: { label: "Segundos", default: "1" } }
-    },
-    game_decir: {
-      category: "game",
-      label: "Decir",
-      icon: "chat_bubble",
-      fields: { msg: { label: "Mensaje", default: "\"Hola\"" } }
-    },
-    game_frentelibre: {
-      category: "game_query",
-      label: "Frente Libre",
-      icon: "check_circle",
-      fields: {}
-    },
-    game_haycaja: {
-      category: "game_query",
-      label: "Hay Caja",
-      icon: "inventory_2",
-      fields: {}
-    },
-    game_haypuerta: {
-      category: "game_query",
-      label: "Hay Puerta",
-      icon: "door_front",
-      fields: {}
-    },
-    game_puertaabierta: {
-      category: "game_query",
-      label: "Puerta Abierta",
-      icon: "door_open",
-      fields: {}
-    },
-    game_hayswitch: {
-      category: "game_query",
-      label: "Hay Switch",
-      icon: "toggle_on",
-      fields: {}
-    },
-    game_llevoobjeto: {
-      category: "game_query",
-      label: "Llevo Objeto",
-      icon: "backpack",
-      fields: {}
-    },
-    game_objetivocompleto: {
-      category: "game_query",
-      label: "Objetivo Completo",
-      icon: "flag",
-      fields: {}
-    },
-    game_posicionx: {
-      category: "game_query",
-      label: "Posicion X",
-      icon: "straighten",
-      fields: {}
-    },
-    game_posiciony: {
-      category: "game_query",
-      label: "Posicion Y",
-      icon: "straighten",
-      fields: {}
-    },
-    game_direccionj: {
-      category: "game_query",
-      label: "Direccion Jugador",
-      icon: "explore",
-      fields: {}
-    },
-    comentario: {
-      category: "comment",
-      label: "Comentario",
-      icon: "comment",
-      fields: { text: { label: "Texto", default: " mi comentario" } }
+    blocks: {
+      algoritmo_inicio: { category:"structure",label:"Algoritmo",icon:"play_circle",isStructure:true,isContainer:true,endLabel:"FinAlgoritmo",fields:{name:{label:"Nombre",default:"MiAlgoritmo"}} },
+      subproceso: { category:"structure",label:"SubProceso",icon:"settings_applications",isStructure:true,isContainer:true,endLabel:"FinSubProceso",fields:{name:{label:"Nombre",default:"miSub"},params:{label:"Parametros",default:""}} },
+      funcion: { category:"structure",label:"Funcion",icon:"functions",isStructure:true,isContainer:true,endLabel:"FinFuncion",fields:{name:{label:"Nombre",default:"miFunc"},params:{label:"Parametros",default:"n"}} },
+      definir: { category:"var",label:"Definir",icon:"variable_insert",fields:{name:{label:"Nombre",default:"x"},type:{label:"Tipo",default:"Entero"}} },
+      constante: { category:"var",label:"Constante",icon:"lock",fields:{name:{label:"Nombre",default:"PI"},value:{label:"Valor",default:"3.1416"}} },
+      dimension: { category:"var",label:"Dimension",icon:"grid_on",fields:{name:{label:"Nombre",default:"arr"},range:{label:"Rango",default:"1..10"}} },
+      asignar: { category:"var",label:"Asignar",icon:"arrow_right_alt",fields:{target:{label:"Variable",default:"x"},value:{label:"Valor",default:"0"}} },
+      escribir: { category:"io",label:"Escribir",icon:"print",fields:{msg:{label:"Mensaje",default:"\"Hola\""}} },
+      escribir_sin: { category:"io",label:"Escribir Sin Saltar",icon:"print",fields:{msg:{label:"Mensaje",default:"\"Hola\""}} },
+      leer: { category:"io",label:"Leer",icon:"input",fields:{var:{label:"Variable",default:"x"}} },
+      limpiar: { category:"io",label:"Limpiar Pantalla",icon:"cleaning_services",fields:{} },
+      si: { category:"condition",label:"Si...Entonces",icon:"fork_right",isContainer:true,hasElse:true,endLabel:"FinSi",fields:{cond:{label:"Condicion",default:"x > 0"}} },
+      sino_si: { category:"condition",label:"Sino Si",icon:"alt_route",isContainer:true,hasElse:false,endLabel:"",fields:{cond:{label:"Condicion",default:"x < 0"}} },
+      segun: { category:"condition",label:"Segun",icon:"alt_route",isContainer:true,endLabel:"FinSegun",fields:{var:{label:"Variable",default:"opcion"}} },
+      mientras: { category:"loop",label:"Mientras",icon:"repeat",isContainer:true,endLabel:"FinMientras",fields:{cond:{label:"Condicion",default:"x < 10"}} },
+      repetir: { category:"loop",label:"Repetir",icon:"replay",isContainer:true,endLabel:"Hasta Que",fields:{cond:{label:"Condicion",default:"x > 0"}} },
+      para: { category:"loop",label:"Para",icon:"loop",isContainer:true,endLabel:"FinPara",fields:{var:{label:"Variable",default:"i"},start:{label:"Desde",default:"1"},end:{label:"Hasta",default:"10"},step:{label:"Paso",default:"1"}} },
+      asignar_math: { category:"math",label:"Operacion",icon:"calculate",fields:{target:{label:"Variable",default:"resultado"},expr:{label:"Expresion",default:"a + b"}} },
+      llamar: { category:"function",label:"Llamar",icon:"call",fields:{name:{label:"Nombre",default:"miSub"},args:{label:"Args",default:""}} },
+      asignar_arr: { category:"array",label:"Asignar Arreglo",icon:"view_list",fields:{name:{label:"Arreglo",default:"arr"},idx:{label:"Indice",default:"i"},value:{label:"Valor",default:"0"}} },
+      comentario: { category:"comment",label:"Comentario",icon:"comment",fields:{text:{label:"Texto",default:" mi comentario"}} }
     }
-  }
   };
 
 })(window);

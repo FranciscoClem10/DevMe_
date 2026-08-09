@@ -259,36 +259,6 @@
     }
 
     async function callSubprogram(callNode, callerScope, isExpression) {
-      // Verificar si es una función built-in del juego
-      const gameBuiltins = window.GAME_BUILTINS || [];
-      const fnName = normalize(callNode.name);
-      
-      if (gameBuiltins.includes(fnName)) {
-        // Función del juego detectada
-        // Si hay un estado de juego activo, ejecutarla
-        if (window.__gameState && window.__gameState.world) {
-          const BUILTINS = window.GameRuntime && window.GameRuntime.BUILTINS;
-          if (BUILTINS && BUILTINS[fnName]) {
-            const args = [];
-            for (const a of callNode.args) {
-              args.push(await evalExpr(a, callerScope));
-            }
-            try {
-              const result = await BUILTINS[fnName](args, window.__gameState, callNode.line);
-              return result;
-            } catch (e) {
-              throw RuntimeError(`Error en función del juego '${callNode.name}': ${e.message}`, callNode.line);
-            }
-          }
-        }
-        // Si no hay estado de juego, es una llamada no-op en modo estándar
-        // Evaluar argumentos para validarlos
-        for (const a of callNode.args) {
-          await evalExpr(a, callerScope);
-        }
-        return null;
-      }
-      
       const sp = subprograms[normalize(callNode.name)];
       if (!sp) throw RuntimeError(`Subproceso/Función '${callNode.name}' no declarado`, callNode.line);
       if (sp.params.length !== callNode.args.length) {

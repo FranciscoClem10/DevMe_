@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>DevMe — Data Assault</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <link rel="icon" href="../imgs/icono.png" type="image/png" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Lexend', sans-serif;
+      background: #1c180d;
+      color: #fcfbf8;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+    }
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(28,24,13,0.9);
+      border-bottom: 1px solid rgba(244,192,37,0.2);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .game-header h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f4c025;
+    }
+    .game-header .score {
+      font-size: 12px;
+      color: #9c8749;
+    }
+    .game-header a {
+      color: #9c8749;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+    #game-canvas {
+      flex: 1;
+      display: block;
+      background: #1c180d;
+    }
+    .touch-controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      background: rgba(28,24,13,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 20;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(3, 44px);
+      gap: 4px;
+    }
+    .dpad-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(244,192,37,0.15);
+      border: 2px solid rgba(244,192,37,0.3);
+      color: #f4c025;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .dpad-btn:active, .dpad-btn.pressed {
+      background: rgba(244,192,37,0.4);
+      border-color: #f4c025;
+      transform: scale(0.92);
+    }
+    .dpad-btn.empty {
+      background: transparent;
+      border: none;
+      pointer-events: none;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .action-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(244,192,37,0.2);
+      border: 2px solid rgba(244,192,37,0.4);
+      color: #f4c025;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .action-btn:active, .action-btn.pressed {
+      background: rgba(244,192,37,0.5);
+      border-color: #f4c025;
+      transform: scale(0.9);
+    }
+    /* Start screen */
+    .start-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(28,24,13,0.95);
+      z-index: 100;
+      padding: 20px;
+      text-align: center;
+    }
+    .start-screen h2 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #f4c025;
+      margin-bottom: 8px;
+    }
+    .start-screen p {
+      font-size: 13px;
+      color: #9c8749;
+      margin-bottom: 20px;
+      max-width: 300px;
+    }
+    .start-btn {
+      padding: 12px 32px;
+      border-radius: 9999px;
+      background: #f4c025;
+      color: #1c180d;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .start-btn:active {
+      background: #e5b321;
+      transform: scale(0.95);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="game-header">
+      <a href="../index-mobile.html"><span class="material-symbols-outlined">arrow_back</span></a>
+      <h1>Data Assault</h1>
+      <span class="score" id="score-display">0</span>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <div class="touch-controls">
+      <div class="dpad">
+        <div class="dpad-btn empty"></div>
+        <div class="dpad-btn" data-dir="up"><span class="material-symbols-outlined">arrow_upward</span></div>
+        <div class="dpad-btn empty"></div>
+        <div class="dpad-btn" data-dir="left"><span class="material-symbols-outlined">arrow_back</span></div>
+        <div class="dpad-btn empty"></div>
+        <div class="dpad-btn" data-dir="right"><span class="material-symbols-outlined">arrow_forward</span></div>
+        <div class="dpad-btn empty"></div>
+        <div class="dpad-btn" data-dir="down"><span class="material-symbols-outlined">arrow_downward</span></div>
+        <div class="dpad-btn empty"></div>
+      </div>
+      <div class="action-buttons">
+        <div class="action-btn" id="btn-fire">FIRE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start screen -->
+  <div class="start-screen" id="start-screen">
+    <h2>Data Assault</h2>
+    <p>Defiendete de los bugs y recoge datos. Usa el D-PAD para moverte y FIRE para disparar.</p>
+    <button class="start-btn" id="btn-start">Jugar</button>
+  </div>
+
+  <script>
+    // Simple touch game - loads the same game logic as PC but with touch controls
+    // For now, this is a placeholder that shows the game UI
+    // The actual game logic from the PC version would be loaded here
+    
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    let gameRunning = false;
+    let score = 0;
+    
+    // Resize canvas
+    function resizeCanvas(){
+      const header = document.querySelector('.game-header');
+      const controls = document.querySelector('.touch-controls');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight - (header ? header.offsetHeight : 0) - (controls ? controls.offsetHeight : 0);
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Touch controls
+    const dpadBtns = document.querySelectorAll('.dpad-btn[data-dir]');
+    const keys = {};
+    
+    dpadBtns.forEach(btn => {
+      const dir = btn.dataset.dir;
+      const keyMap = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+      const key = keyMap[dir];
+      
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; btn.classList.add('pressed'); });
+      btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; btn.classList.remove('pressed'); });
+      btn.addEventListener('touchcancel', (e) => { keys[key] = false; btn.classList.remove('pressed'); });
+    });
+    
+    const fireBtn = document.getElementById('btn-fire');
+    fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[' '] = true; fireBtn.classList.add('pressed'); });
+    fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys[' '] = false; fireBtn.classList.remove('pressed'); });
+    fireBtn.addEventListener('touchcancel', (e) => { keys[' '] = false; fireBtn.classList.remove('pressed'); });
+    
+    // Simple game loop (placeholder)
+    let player = { x: 0, y: 0, size: 20, speed: 3 };
+    let bullets = [];
+    let enemies = [];
+    let particles = [];
+    
+    function resetGame(){
+      player.x = canvas.width / 2;
+      player.y = canvas.height - 80;
+      bullets = [];
+      enemies = [];
+      particles = [];
+      score = 0;
+      updateScore();
+    }
+    
+    function updateScore(){
+      document.getElementById('score-display').textContent = score;
+    }
+    
+    function spawnEnemy(){
+      enemies.push({
+        x: Math.random() * (canvas.width - 30) + 15,
+        y: -20,
+        size: 15,
+        speed: 1 + Math.random() * 2,
+        hp: 1
+      });
+    }
+    
+    function update(){
+      // Player movement
+      if(keys['ArrowUp']) player.y -= player.speed;
+      if(keys['ArrowDown']) player.y += player.speed;
+      if(keys['ArrowLeft']) player.x -= player.speed;
+      if(keys['ArrowRight']) player.x += player.speed;
+      
+      // Clamp player
+      player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+      
+      // Bullets
+      if(keys[' '] && bullets.length < 5){
+        keys[' '] = false; // Single shot
+        bullets.push({ x: player.x, y: player.y - player.size, speed: 6 });
+      }
+      bullets = bullets.filter(b => {
+        b.y -= b.speed;
+        return b.y > -10;
+      });
+      
+      // Enemies
+      if(Math.random() < 0.02) spawnEnemy();
+      enemies = enemies.filter(e => {
+        e.y += e.speed;
+        if(e.y > canvas.height + 20) return false;
+        
+        // Check bullet collision
+        for(let i = bullets.length - 1; i >= 0; i--){
+          const b = bullets[i];
+          const dx = b.x - e.x;
+          const dy = b.y - e.y;
+          if(Math.sqrt(dx*dx + dy*dy) < e.size + 5){
+            bullets.splice(i, 1);
+            score += 10;
+            updateScore();
+            // Particles
+            for(let j = 0; j < 5; j++){
+              particles.push({ x: e.x, y: e.y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 20 });
+            }
+            return false;
+          }
+        }
+        return true;
+      });
+      
+      // Particles
+      particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        return p.life > 0;
+      });
+    }
+    
+    function draw(){
+      ctx.fillStyle = '#1c180d';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Stars background
+      ctx.fillStyle = 'rgba(244,192,37,0.1)';
+      for(let i = 0; i < 50; i++){
+        const x = (i * 137) % canvas.width;
+        const y = (i * 211 + Date.now() * 0.02) % canvas.height;
+        ctx.fillRect(x, y, 1, 1);
+      }
+      
+      // Player
+      ctx.fillStyle = '#f4c025';
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y - player.size);
+      ctx.lineTo(player.x - player.size * 0.7, player.y + player.size * 0.5);
+      ctx.lineTo(player.x + player.size * 0.7, player.y + player.size * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Bullets
+      ctx.fillStyle = '#4488ff';
+      bullets.forEach(b => {
+        ctx.fillRect(b.x - 2, b.y - 6, 4, 12);
+      });
+      
+      // Enemies
+      ctx.fillStyle = '#d32f2f';
+      enemies.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(e.x - 4, e.y - 3, 3, 0, Math.PI * 2);
+        ctx.arc(e.x + 4, e.y - 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d32f2f';
+      });
+      
+      // Particles
+      particles.forEach(p => {
+        ctx.fillStyle = `rgba(244,192,37,${p.life/20})`;
+        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      });
+    }
+    
+    function gameLoop(){
+      if(!gameRunning) return;
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // Start
+    document.getElementById('btn-start').addEventListener('click', () => {
+      document.getElementById('start-screen').classList.add('hidden');
+      gameRunning = true;
+      resetGame();
+      gameLoop();
+    });
+    
+    // Draw initial frame
+    draw();
+  </script>
+</body>
+</html>

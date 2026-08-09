@@ -7,8 +7,6 @@
   const editor = Editor.init();
   const btnRun = document.getElementById('btn-run');
   const btnStop = document.getElementById('btn-stop');
-  const btnPause = document.getElementById('btn-pause');
-  const btnReset = document.getElementById('btn-reset');
   const btnClear = document.getElementById('btn-clear');
   const btnExample = document.getElementById('btn-example');
   const exampleSelect = document.getElementById('example-select');
@@ -53,9 +51,6 @@
   // === Flag to prevent sync loops ===
   let syncingFromCode = false;
   let syncingFromBlocks = false;
-  
-  // Layout state
-  let currentLayout = 'split-code';
 
   // === Init Block Editor ===
   (async () => {
@@ -77,15 +72,12 @@
       }
     });
 
-    // Only load default example if the editor is still empty
-    // (game.js may have already loaded starter code for the current level)
-    if (!editor.textarea.value.trim()) {
-      syncingFromCode = true;
-      editor.textarea.value = EXAMPLES.hola;
-      editor.update();
-      try { BlockEditor.syncFromCode(EXAMPLES.hola); } catch (e) {}
-      syncingFromCode = false;
-    }
+    // Load default example after BlockEditor is ready
+    syncingFromCode = true;
+    editor.textarea.value = EXAMPLES.hola;
+    editor.update();
+    try { BlockEditor.syncFromCode(EXAMPLES.hola); } catch (e) {}
+    syncingFromCode = false;
   })();
 
   // === Setup execution highlighting callback ===
@@ -95,73 +87,25 @@
 
   // === Main Tabs ===
   const mainTabs = document.querySelectorAll('.main-tab');
-  const editorPanel = document.getElementById('editor-panel');
-  const gamePanel = document.getElementById('game-panel');
+  const mainPanels = document.querySelectorAll('.main-tab-panel');
 
   mainTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      const tabName = tab.dataset.mainTab;
-      // If clicking game tab, switch to game layout
-      if (tabName === 'game') {
-        applyLayout('game');
-        return;
-      }
-      // If clicking diagram tab, switch to diagram layout
-      if (tabName === 'diagram') {
-        applyLayout('diagram');
-        return;
-      }
-      // If clicking code/blocks, show that panel in editor area
-      // In split mode, the editor panel shows either code or blocks
       mainTabs.forEach(t => t.classList.remove('active'));
+      mainPanels.forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
-      
-      const allPanels = document.querySelectorAll('.main-tab-panel');
-      allPanels.forEach(p => {
-        p.style.display = 'none';
-        p.classList.remove('active');
-      });
-      
-      const panel = document.querySelector('.main-tab-panel[data-panel="' + tabName + '"]');
-      if (panel) {
-        panel.style.display = 'flex';
-        panel.classList.add('active');
-      }
-      
-      // Update layout buttons and state
-      if (tabName === 'code') {
-        currentLayout = 'split-code';
-        document.querySelectorAll('.layout-btn').forEach(b => b.classList.toggle('active', b.dataset.layout === 'split-code'));
-        // Ensure split mode is active
-        editorPanel.style.display = 'flex';
-        editorPanel.style.flex = '1';
-        gamePanel.style.display = 'flex';
-        gamePanel.style.flex = '1';
-        document.getElementById('split-divider-v').style.display = 'block';
-      } else if (tabName === 'blocks') {
-        currentLayout = 'split-blocks';
-        document.querySelectorAll('.layout-btn').forEach(b => b.classList.toggle('active', b.dataset.layout === 'split-blocks'));
-        editorPanel.style.display = 'flex';
-        editorPanel.style.flex = '1';
-        gamePanel.style.display = 'flex';
-        gamePanel.style.flex = '1';
-        document.getElementById('split-divider-v').style.display = 'block';
-      }
-      
-      // Resize canvas after layout change
-      setTimeout(() => {
-        if (window.__renderer) {
-          window.__renderer.resize();
-          window.__renderer.render();
-        }
-      }, 60);
+      const panelName = tab.dataset.mainTab;
+      document.querySelector('.main-tab-panel[data-panel="' + panelName + '"]').classList.add('active');
     });
   });
 
   function switchToMainTab(name) {
     mainTabs.forEach(t => t.classList.remove('active'));
+    mainPanels.forEach(p => p.classList.remove('active'));
     const tab = document.querySelector('.main-tab[data-main-tab="' + name + '"]');
-    if (tab) tab.click();
+    if (tab) tab.classList.add('active');
+    const panel = document.querySelector('.main-tab-panel[data-panel="' + name + '"]');
+    if (panel) panel.classList.add('active');
   }
 
   // === Console sub-tabs ===
@@ -477,6 +421,7 @@
     btnRun.disabled = true;
     btnStop.style.display = 'inline-flex';
     abortController = new AbortController();
+
     executionTimeoutId = setTimeout(() => {
       if (isRunning) writelnOut('La ejecucion esta tomando mas de 3 segundos. Use "Detener" si es necesario.', 'info');
     }, 3000);
@@ -505,25 +450,8 @@
   function stopProgram() { if (abortController) abortController.abort(); }
 
   // === Event listeners ===
-  btnRun.addEventListener('click', () => {
-    // If in game layout or split mode, run the game
-    if (currentLayout === 'game' || currentLayout === 'split-code' || currentLayout === 'split-blocks') {
-      if (typeof window.runGameProgram === 'function') window.runGameProgram();
-    } else {
-      runProgram();
-    }
-  });
-  btnStop.addEventListener('click', () => {
-    stopProgram();
-    if (typeof window.stopGameProgram === 'function') window.stopGameProgram();
-  });
-  btnReset.addEventListener('click', () => {
-    if (typeof window.resetGame === 'function') window.resetGame();
-  });
-  btnClear.addEventListener('click', () => {
-    clearConsole();
-    clearErrors();
-  });
+  btnRun.addEventListener('click', runProgram);
+  btnStop.addEventListener('click', stopProgram);
 
   btnExample.addEventListener('click', () => {
     const key = exampleSelect.value;
@@ -861,280 +789,5 @@ document.querySelectorAll('.main-tab').forEach(tab => {
         }, 50);
     });
 });
-  // ============================================================
-  // Función global para cargar código desde el juego (starter de niveles)
-  // ============================================================
-  window.loadStarterCode = function(code) {
-    if (!code) return;
-    syncingFromCode = true;
-    editor.textarea.value = code;
-    editor.update();
-    if (BlockEditor.isReady()) {
-      try { BlockEditor.syncFromCode(code); } catch (e) { console.warn('Error sync blocks from starter:', e); }
-    }
-    syncingFromCode = false;
-  };
-
-  // ============================================================
-  // Layout Manager: Split View con canvas funcional
-  // ============================================================
-
-  function applyLayout(mode) {
-    currentLayout = mode;
-    const edPanel = document.getElementById('editor-panel');
-    const gmPanel = document.getElementById('game-panel');
-    const splitDiv = document.getElementById('split-divider-v');
-
-    // Actualizar botones de layout
-    document.querySelectorAll('.layout-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.layout === mode);
-    });
-
-    // Actualizar tabs
-    const allPanels = document.querySelectorAll('.main-tab-panel');
-    allPanels.forEach(p => {
-      p.style.display = 'none';
-      p.classList.remove('active');
-    });
-
-    // Actualizar tabs principales
-    const mTabs = document.querySelectorAll('.main-tab');
-    mTabs.forEach(t => t.classList.remove('active'));
-
-    if (mode === 'game') {
-      edPanel.style.display = 'none';
-      gmPanel.style.display = 'flex';
-      gmPanel.style.flex = '1';
-      splitDiv.style.display = 'none';
-      const gameTab = document.querySelector('.main-tab[data-main-tab="game"]');
-      if (gameTab) gameTab.classList.add('active');
-    } else if (mode === 'diagram') {
-      edPanel.style.display = 'flex';
-      edPanel.style.flex = '1';
-      gmPanel.style.display = 'none';
-      splitDiv.style.display = 'none';
-      const diagramPanel = document.querySelector('.main-tab-panel[data-panel="diagram"]');
-      diagramPanel.style.display = 'flex';
-      diagramPanel.classList.add('active');
-      const diagramTab = document.querySelector('.main-tab[data-main-tab="diagram"]');
-      if (diagramTab) diagramTab.classList.add('active');
-    } else if (mode === 'split-code') {
-      edPanel.style.display = 'flex';
-      edPanel.style.flex = '1';
-      edPanel.style.width = '';
-      gmPanel.style.display = 'flex';
-      gmPanel.style.flex = '1';
-      gmPanel.style.width = '';
-      splitDiv.style.display = 'block';
-      const codePanel = document.querySelector('.main-tab-panel[data-panel="code"]');
-      codePanel.style.display = 'flex';
-      codePanel.classList.add('active');
-      const codeTab = document.querySelector('.main-tab[data-main-tab="code"]');
-      if (codeTab) codeTab.classList.add('active');
-    } else if (mode === 'split-blocks') {
-      edPanel.style.display = 'flex';
-      edPanel.style.flex = '1';
-      edPanel.style.width = '';
-      gmPanel.style.display = 'flex';
-      gmPanel.style.flex = '1';
-      gmPanel.style.width = '';
-      splitDiv.style.display = 'block';
-      const blocksPanel = document.querySelector('.main-tab-panel[data-panel="blocks"]');
-      blocksPanel.style.display = 'flex';
-      blocksPanel.classList.add('active');
-      const blocksTab = document.querySelector('.main-tab[data-main-tab="blocks"]');
-      if (blocksTab) blocksTab.classList.add('active');
-    }
-
-    // Redimensionar canvas del juego después de cambiar el layout
-    setTimeout(() => {
-      if (window.__renderer) {
-        window.__renderer.resize();
-        window.__renderer.render();
-      }
-    }, 60);
-  }
-
-  // Event listeners para botones de layout
-  document.querySelectorAll('.layout-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      applyLayout(btn.dataset.layout);
-    });
-  });
-
-  // Exponer applyLayout globalmente
-  window.__applyLayout = applyLayout;
-
-  // ============================================================
-  // Vertical Split Divider Resize (between editor and game)
-  // ============================================================
-  const splitDividerV = document.getElementById('split-divider-v');
-  let isVSplitResizing = false;
-  let vSplitStartX = 0;
-  let vSplitEditorStartFlex = 0;
-
-  splitDividerV.addEventListener('mousedown', (e) => {
-    isVSplitResizing = true;
-    vSplitStartX = e.clientX;
-    const edPanel = document.getElementById('editor-panel');
-    vSplitEditorStartFlex = edPanel.offsetWidth;
-    splitDividerV.style.background = '#f4c025';
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isVSplitResizing) return;
-    const delta = e.clientX - vSplitStartX;
-    const edPanel = document.getElementById('editor-panel');
-    const gmPanel = document.getElementById('game-panel');
-    const container = document.getElementById('content-wrapper');
-    const containerWidth = container.offsetWidth;
-    let newEditorWidth = vSplitEditorStartFlex + delta;
-    const minPane = 200;
-    const maxEditor = containerWidth - minPane - 4; // 4px for divider
-    newEditorWidth = Math.min(Math.max(newEditorWidth, minPane), maxEditor);
-    const gameWidth = containerWidth - newEditorWidth - 4;
-    edPanel.style.flex = 'none';
-    edPanel.style.width = newEditorWidth + 'px';
-    gmPanel.style.flex = 'none';
-    gmPanel.style.width = gameWidth + 'px';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (isVSplitResizing) {
-      isVSplitResizing = false;
-      splitDividerV.style.background = '#e8e2ce';
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      // Resize canvas after split resize
-      setTimeout(() => {
-        if (window.__renderer) {
-          window.__renderer.resize();
-          window.__renderer.render();
-        }
-      }, 60);
-    }
-  });
-
-  // ============================================================
-  // Sidebar Resize & Collapse
-  // ============================================================
-  const sidebar = document.getElementById('sidebar');
-  const sidebarResizeHandle = document.getElementById('sidebar-resize-handle');
-  const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
-  const sidebarExpandBtn = document.getElementById('sidebar-expand-btn');
-
-  let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || '220', 10);
-  if (sidebarWidth < 140) sidebarWidth = 140;
-  if (sidebarWidth > 400) sidebarWidth = 400;
-  sidebar.style.width = sidebarWidth + 'px';
-
-  let isSidebarResizing = false;
-  let sidebarStartX = 0;
-  let sidebarStartWidth = 0;
-
-  sidebarResizeHandle.addEventListener('mousedown', (e) => {
-    isSidebarResizing = true;
-    sidebarStartX = e.clientX;
-    sidebarStartWidth = sidebar.offsetWidth;
-    sidebarResizeHandle.classList.add('active');
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isSidebarResizing) return;
-    const delta = e.clientX - sidebarStartX;
-    let newWidth = sidebarStartWidth + delta;
-    newWidth = Math.min(Math.max(newWidth, 140), 400);
-    sidebar.style.width = newWidth + 'px';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (isSidebarResizing) {
-      isSidebarResizing = false;
-      sidebarResizeHandle.classList.remove('active');
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      localStorage.setItem('sidebarWidth', sidebar.offsetWidth);
-    }
-  });
-
-  // Collapse sidebar
-  let sidebarCollapsed = false;
-  function collapseSidebar() {
-    sidebarCollapsed = true;
-    sidebar.style.width = '0px';
-    sidebar.style.minWidth = '0px';
-    sidebar.style.opacity = '0';
-    sidebar.style.pointerEvents = 'none';
-    sidebarResizeHandle.style.display = 'none';
-    sidebarExpandBtn.style.display = 'flex';
-    localStorage.setItem('sidebarCollapsed', 'true');
-  }
-
-  function expandSidebar() {
-    sidebarCollapsed = false;
-    const savedWidth = parseInt(localStorage.getItem('sidebarWidth') || '220', 10);
-    sidebar.style.width = savedWidth + 'px';
-    sidebar.style.minWidth = '140px';
-    sidebar.style.opacity = '1';
-    sidebar.style.pointerEvents = '';
-    sidebarResizeHandle.style.display = '';
-    sidebarExpandBtn.style.display = 'none';
-    localStorage.setItem('sidebarCollapsed', 'false');
-  }
-
-  sidebarCollapseBtn.addEventListener('click', collapseSidebar);
-  sidebarExpandBtn.addEventListener('click', expandSidebar);
-
-  // Double-click on resize handle to collapse/expand
-  sidebarResizeHandle.addEventListener('dblclick', () => {
-    if (!sidebarCollapsed) collapseSidebar();
-  });
-
-  // Restore collapsed state
-  if (localStorage.getItem('sidebarCollapsed') === 'true') {
-    collapseSidebar();
-  }
-
-  // ============================================================
-  // Console Clear Button
-  // ============================================================
-  const btnClearConsole = document.getElementById('btn-clear-console');
-  if (btnClearConsole) {
-    btnClearConsole.addEventListener('click', () => {
-      clearConsole();
-    });
-  }
-
-  // ============================================================
-  // Nivel tab button for level selector
-  // ============================================================
-  const btnLevelsTab = document.getElementById('btn-levels-tab');
-  if (btnLevelsTab) {
-    btnLevelsTab.addEventListener('click', () => {
-      if (typeof window.openLevelSelector === 'function') window.openLevelSelector();
-      else {
-        const modal = document.getElementById('game-levels-modal');
-        if (modal) {
-          if (typeof renderLevelsGrid === 'function') renderLevelsGrid();
-          modal.style.display = 'flex';
-        }
-      }
-    });
-  }
-
-  // ============================================================
-  // Apply initial layout: Code + Game (split view)
-  // ============================================================
-  setTimeout(() => {
-    applyLayout('split-code');
-  }, 50);
-
+  btnStop.style.display = 'none';
 })();

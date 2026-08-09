@@ -8,30 +8,6 @@
     return { phase: 'Semántico', message: msg, line: line || 0, col: 0 };
   }
 
-  // Funciones built-in del juego que el analizador semántico debe reconocer
-  const GAME_BUILTIN_FNS = new Set([
-    'avanzar','mover','girar','empujar','tomar','soltar','activar','desactivar',
-    'abrir','cerrar','usar','esperar','decir','entregar','hablar',
-    'frentelibre','hayobjeto','haycaja','hayitem','haypuerta','puertaabierta',
-    'puertabloqueada','puertaprotegida',
-    'hayenemigo','haypiston','enemigoactivo','pistonactivo','hayswitch','haynpc',
-    'inventariolleno','llevoobjeto','llevocaja','llevollave','objetivocompleto',
-    'posicionx','posiciony','direccionj','cajasentregadas','cajasrestantes',
-    'haycajaen','hayitemen',
-    'inventariotamanio','obtenerinventario','moverinventario','intercambiarinventario',
-    'azar','abs','raiz'
-  ]);
-
-  function isGameBuiltin(name) {
-    const n = normalizeName(name);
-    if (GAME_BUILTIN_FNS.has(n)) return true;
-    // También verificar contra GAME_BUILTINS global si está disponible
-    if (typeof window !== 'undefined' && window.GAME_BUILTINS) {
-      return window.GAME_BUILTINS.includes(n);
-    }
-    return false;
-  }
-
   function normalizeName(name) { return name.toLowerCase(); }
 
   function analyze(ast) {
@@ -111,23 +87,6 @@
           return type;
         }
         case 'Call': {
-          // Permitir funciones built-in del juego
-          if (isGameBuiltin(node.name)) {
-            for (const a of node.args) typeOfExpr(a, scope, false);
-            // Las consultas del juego devuelven logico o entero
-            const n = normalizeName(node.name);
-            if (['frentelibre','hayobjeto','haycaja','hayitem','haypuerta','puertaabierta',
-                 'puertabloqueada','puertaprotegida',
-                 'hayenemigo','haypiston','enemigoactivo','pistonactivo','hayswitch','haynpc',
-                 'inventariolleno','llevoobjeto','llevocaja','llevollave','objetivocompleto',
-                 'haycajaen','hayitemen'].includes(n)) return 'logico';
-            if (['posicionx','posiciony','cajasentregadas','cajasrestantes',
-                 'inventariotamanio',
-                 'azar','abs','raiz'].includes(n)) return 'entero';
-            if (n === 'direccionj') return 'caracter';
-            if (n === 'obtenerinventario') return 'caracter';
-            return 'unknown';
-          }
           const sp = subprograms[normalizeName(node.name)];
           if (!sp) { errors.push(SemError(`Función/Subproceso '${node.name}' no declarado`, node.line)); return 'unknown'; }
           if (sp.params.length !== node.args.length) {
@@ -318,11 +277,6 @@
         }
         case 'CallStmt': {
           const c = s.call;
-          // Permitir funciones built-in del juego como comandos
-          if (isGameBuiltin(c.name)) {
-            for (const a of c.args) typeOfExpr(a, scope, false);
-            return;
-          }
           const sp = subprograms[normalizeName(c.name)];
           if (!sp) { errors.push(SemError(`Subproceso/Función '${c.name}' no declarado`, s.line)); return; }
           if (sp.params.length !== c.args.length) {

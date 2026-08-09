@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>DevMe — Programar</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link rel="icon" href="imgs/icono.png" type="image/png" />
+  <link rel="stylesheet" href="../css/mobile.css" />
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#f4c025",
+            "background-light": "#fcfbf8",
+            "text-light": "#1c180d",
+            "text-light-muted": "#9c8749",
+            "border-light": "#e8e2ce",
+          },
+          fontFamily: { "display": ["Lexend", "sans-serif"] },
+          borderRadius: { "DEFAULT": "1rem", "lg": "1.5rem", "xl": "2rem", "full": "9999px" },
+        },
+      },
+    }
+  </script>
+  <style>
+    .bg-panal { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="35" viewBox="0 0 60 35"><path d="M20 0 L40 0 L50 17.5 L40 35 L20 35 L10 17.5 Z M10 17.5 L0 17.5 M50 17.5 L60 17.5 M20 0 L10 17.5 M40 0 L50 17.5 M20 35 L10 17.5 M40 35 L50 17.5" fill="none" stroke="%23a7632b" stroke-opacity="0.05" stroke-width="4"/></svg>'); background-size: 60px 35px; background-repeat: repeat; }
+    
+    .mobile-programar-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    
+    .editor-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .editor-area textarea {
+      flex: 1;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      background: #fcfbf8;
+      color: #1c180d;
+      tab-size: 4;
+    }
+    
+    .tok-kw{color:#1200ff;font-weight:bold} .tok-type{color:#e404ff} .tok-str{color:#22a324} .tok-num{color:#ff0000} .tok-cmt{color:#048b86;font-style:italic} .tok-op{color:#e6b01d} .tok-bool{color:#005cc5} .tok-name{color:#6f42c1} .tok-var{color:#e36209}
+    
+    .bottom-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 8px 12px;
+      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+      background: #f5f3ee;
+      border-top: 1px solid #e8e2ce;
+      flex-shrink: 0;
+    }
+    .bottom-controls .ctrl-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      background: transparent;
+      border: none;
+      color: #9c8749;
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .bottom-controls .ctrl-btn:active {
+      background: rgba(244,192,37,0.15);
+      color: #1c180d;
+    }
+    .bottom-controls .ctrl-btn .material-symbols-outlined {
+      font-size: 22px;
+    }
+    .bottom-controls .run-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #f4c025;
+      color: #1c180d;
+      box-shadow: 0 2px 8px rgba(244,192,37,0.4);
+    }
+    .bottom-controls .run-btn:active {
+      background: #e5b321;
+      transform: scale(0.92);
+    }
+    .bottom-controls .run-btn .material-symbols-outlined {
+      font-size: 28px;
+    }
+    
+    /* Console sheet */
+    .console-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fcfbf8;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+      z-index: 200;
+      transform: translateY(calc(100% - 44px));
+      transition: transform 0.3s ease;
+      max-height: 60vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .console-sheet.open { transform: translateY(0); }
+    .console-sheet .sheet-handle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      cursor: pointer;
+    }
+    .console-sheet .sheet-handle::before {
+      content: '';
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: #e8e2ce;
+    }
+    .console-sheet .sheet-tabs {
+      display: flex;
+      border-bottom: 1px solid #e8e2ce;
+    }
+    .console-sheet .sheet-tab {
+      flex: 1;
+      padding: 8px;
+      background: transparent;
+      border: none;
+      color: #9c8749;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .console-sheet .sheet-tab.active {
+      color: #1c180d;
+      border-bottom-color: #f4c025;
+    }
+    .console-sheet .sheet-content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .console-output {
+      padding: 10px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      color: #1c180d;
+      min-height: 80px;
+    }
+    .console-output .out { color: #1c180d; }
+    .console-output .in { color: #005cc5; }
+    .console-output .info { color: #9c8749; font-style: italic; }
+    .console-output .err { color: #b31d28; }
+    .console-output .ok { color: #22863a; }
+    .errors-output { color: #b31d28; }
+    .errors-output .err-line { padding: 4px 8px; border-left: 3px solid #b31d28; margin-bottom: 4px; background: rgba(179,29,40,0.08); font-size: 12px; }
+    .errors-output .err-phase { font-weight: bold; color: #d73a49; }
+    .errors-output .err-ok { color: #22863a; border-left-color: #22863a; background: rgba(34,134,58,0.08); }
+    
+    .input-line {
+      padding: 8px;
+      background: #f5f3ee;
+      border-top: 1px solid #e8e2ce;
+      display: none;
+      gap: 6px;
+      align-items: center;
+    }
+    .input-line.visible { display: flex; }
+    .input-line input {
+      flex: 1;
+      padding: 8px 10px;
+      background: #fff;
+      color: #1c180d;
+      border: 1px solid #d0c8b4;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .input-line button {
+      padding: 8px 14px;
+      background: #f4c025;
+      color: #1c180d;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    
+    /* Quick insert buttons */
+    .quick-insert {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 6px 8px;
+      background: #f5f3ee;
+      border-top: 1px solid #e8e2ce;
+      flex-shrink: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .quick-insert::-webkit-scrollbar { display: none; }
+    .quick-insert-btn {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      background: #fff;
+      border: 1px solid #e8e2ce;
+      color: #1c180d;
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .quick-insert-btn:active {
+      background: #f4c025;
+      border-color: #f4c025;
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body class="bg-background-light font-display text-text-light overflow-hidden">
+  <div class="mobile-programar-layout">
+    <!-- Header -->
+    <div class="mobile-header">
+      <div class="logo">
+        <img src="imgs/icono.png" alt="DevMe" />
+        <div class="logo-text">
+          <h1>DevMe Code</h1>
+          <p>Editor libre</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="../index-mobile.html" class="mobile-btn-icon" title="Inicio">
+          <span class="material-symbols-outlined">home</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mobile-tabs">
+      <button class="mobile-tab active" data-tab="code">
+        <span class="material-symbols-outlined">code</span> Codigo
+      </button>
+      <button class="mobile-tab" data-tab="blocks">
+        <span class="material-symbols-outlined">account_tree</span> Bloques
+      </button>
+      <button class="mobile-tab" data-tab="diagram">
+        <span class="material-symbols-outlined">flowchart</span> Diagrama
+      </button>
+    </div>
+
+    <!-- Editor area -->
+    <div class="editor-area">
+      <!-- Code tab -->
+      <div id="tab-code" class="tab-panel" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+        <!-- Quick insert -->
+        <div class="quick-insert">
+          <button class="quick-insert-btn" data-insert="Escribir()">Escribir</button>
+          <button class="quick-insert-btn" data-insert="Leer()">Leer</button>
+          <button class="quick-insert-btn" data-insert="Si  Entonces&#10;    &#10;FinSi">Si...FinSi</button>
+          <button class="quick-insert-btn" data-insert="Mientras  Hacer&#10;    &#10;FinMientras">Mientras</button>
+          <button class="quick-insert-btn" data-insert="Para <-  Hasta  Hacer&#10;    &#10;FinPara">Para</button>
+          <button class="quick-insert-btn" data-insert="Repetir&#10;    &#10;Hasta Que">Repetir</button>
+          <button class="quick-insert-btn" data-insert="Definir  <- ">Definir</button>
+          <button class="quick-insert-btn" data-insert="SubProceso ()&#10;    &#10;FinSubProceso">SubProceso</button>
+        </div>
+        <textarea id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Escribe tu pseudocodigo aqui..."></textarea>
+      </div>
+
+      <!-- Blocks tab -->
+      <div id="tab-blocks" class="tab-panel" style="display:none;flex:1;min-height:0;overflow:auto;">
+        <div id="block-workspace" style="width:100%;height:100%;overflow:auto;background:#f9f8f5;padding:8px;">
+          <div id="block-list"></div>
+          <div id="block-drop-zone" style="min-height:60px;display:flex;align-items:center;justify-content:center;color:#b0a070;font-size:12px;font-style:italic;">
+            Arrastra bloques aqui
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagram tab -->
+      <div id="tab-diagram" class="tab-panel" style="display:none;flex:1;min-height:0;overflow:auto;">
+        <div id="diagram-container" style="width:100%;height:100%;overflow:auto;position:relative;">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#b0a070;font-size:12px;font-style:italic;">
+            Ejecuta el codigo para ver el diagrama
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div class="bottom-controls">
+      <button class="ctrl-btn" id="btn-clear">
+        <span class="material-symbols-outlined">cleaning_services</span>
+        <span>Limpiar</span>
+      </button>
+      <button class="ctrl-btn" id="btn-stop" style="display:none">
+        <span class="material-symbols-outlined">stop</span>
+        <span>Detener</span>
+      </button>
+      <button class="ctrl-btn run-btn" id="btn-run">
+        <span class="material-symbols-outlined">play_arrow</span>
+      </button>
+      <button class="ctrl-btn" id="btn-example">
+        <span class="material-symbols-outlined">upload_file</span>
+        <span>Ejemplo</span>
+      </button>
+      <button class="ctrl-btn" id="btn-console">
+        <span class="material-symbols-outlined">terminal</span>
+        <span>Consola</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Console sheet -->
+  <div id="console-sheet" class="console-sheet">
+    <div class="sheet-handle" id="console-handle"></div>
+    <div class="sheet-tabs">
+      <button class="sheet-tab active" data-sheet-tab="console">Consola</button>
+      <button class="sheet-tab" data-sheet-tab="errors">Errores</button>
+    </div>
+    <div class="sheet-content">
+      <div id="sheet-console" class="sheet-panel">
+        <div id="console" class="console-output bg-panal"></div>
+        <div id="input-line" class="input-line">
+          <span id="input-prompt" style="color:#005cc5;font-size:12px;font-weight:500;">Entrada:</span>
+          <input type="text" id="stdin" autocomplete="off" />
+          <button id="btn-send">Enviar</button>
+        </div>
+      </div>
+      <div id="sheet-errors" class="sheet-panel" style="display:none;">
+        <div id="errors" class="errors-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Select for examples (hidden) -->
+  <select id="example-select" style="display:none;"></select>
+
+  <!-- SCRIPTS -->
+  <script src="js/lexer.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/semantic.js"></script>
+  <script src="js/interpreter.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/examples.js"></script>
+  <script src="js/diagramGenerator.js"></script>
+  <script src="js/blockEditor.js"></script>
+  <script src="js/main-programar-mobile.js"></script>
+</body>
+</html>
