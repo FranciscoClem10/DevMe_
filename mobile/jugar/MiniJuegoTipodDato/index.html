@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Data Assault - Aprende Tipos de Datos</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        html, body {
+            background-color: #fcfbf8;
+            color: #1c180d;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #back-btn {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 1000;
+            background: #fde68a;
+            color: #1c180d;
+            border: 2px solid #e8e2ce;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        #back-btn:active {
+            background: #f4c025;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: #f5f0e0;
+            width: 100%;
+            height: 100%;
+        }
+        #touch-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #joystick-zone {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 130px;
+            height: 130px;
+            pointer-events: auto;
+            z-index: 101;
+        }
+        #joystick-base {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(252, 251, 248, 0.5);
+            border: 2px solid #e8e2ce;
+            left: 5px;
+            top: 5px;
+        }
+        #joystick-thumb {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(253, 230, 138, 0.7);
+            border: 2px solid #f4c025;
+            left: 40px;
+            top: 40px;
+            transition: none;
+        }
+        #weapon-buttons {
+            position: fixed;
+            bottom: 20px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+            z-index: 101;
+        }
+        .weapon-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            border: 2px solid #e8e2ce;
+            background: rgba(252, 251, 248, 0.85);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .weapon-btn:active {
+            transform: scale(0.92);
+        }
+        .weapon-btn.active {
+            border-width: 3px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.12);
+        }
+        #pause-btn {
+            position: fixed;
+            top: 8px;
+            right: 8px;
+            z-index: 1000;
+            background: #fde68a;
+            color: #1c180d;
+            border: 2px solid #e8e2ce;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        #pause-btn:active {
+            background: #f4c025;
+        }
+        #fire-zone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            z-index: 50;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+<a id="back-btn" href="../index.html">← Volver</a>
+<button id="pause-btn">⏸ Pausa</button>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="1600" height="850"></canvas>
+</div>
+
+<div id="fire-zone"></div>
+
+<div id="touch-controls">
+    <div id="joystick-zone">
+        <div id="joystick-base"></div>
+        <div id="joystick-thumb"></div>
+    </div>
+    <div id="weapon-buttons">
+        <button class="weapon-btn" data-weapon="0" style="color:#4488ff;border-color:#4488ff;">■</button>
+        <button class="weapon-btn" data-weapon="1" style="color:#44ff88;border-color:#44ff88;">●</button>
+        <button class="weapon-btn" data-weapon="2" style="color:#ffdd44;border-color:#ffdd44;">"</button>
+        <button class="weapon-btn" data-weapon="3" style="color:#aa44ff;border-color:#aa44ff;">✓</button>
+    </div>
+</div>
+
+<script>
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+            if (typeof r === 'number') r = [r, r, r, r];
+            const [tl, tr, br, bl] = r;
+            this.moveTo(x + tl, y);
+            this.lineTo(x + w - tr, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + tr);
+            this.lineTo(x + w, y + h - br);
+            this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+            this.lineTo(x + bl, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - bl);
+            this.lineTo(x, y + tl);
+            this.quadraticCurveTo(x, y, x + tl, y);
+            this.closePath();
+            return this;
+        };
+    }
+</script>
+<script src="stateMachine.js"></script>
+<script src="input.js"></script>
+<script src="objectPool.js"></script>
+<script src="bullet.js"></script>
+<script src="powerup.js"></script>
+<script src="particles.js"></script>
+<script src="enemy.js"></script>
+<script src="boss.js"></script>
+<script src="collisions.js"></script>
+<script src="waveManager.js"></script>
+<script src="player.js"></script>
+<script src="game.js"></script>
+
+<script>
+    window.onload = () => {
+        const canvas = document.getElementById('gameCanvas');
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+        window.dataAssaultGame = new Game();
+    };
+</script>
+</body>
+</html>

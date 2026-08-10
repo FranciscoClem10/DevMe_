@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevMe — Aprende a programar</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <link rel="icon" href="icono.png" type="image/png" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: "#fde68a",
+            "primary-dark": "#facc15",
+            "primary-bg": "#fef9e7",
+            "background-light": "#fcfbf8",
+            "text-light": "#1c180d",
+            "text-light-muted": "#9c8749",
+            "border-light": "#e8e2ce",
+          },
+          fontFamily: { display: ["Lexend", "sans-serif"] },
+          borderRadius: {
+            DEFAULT: "1rem",
+            lg: "1.5rem",
+            xl: "2rem",
+            full: "9999px",
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    .bg-panal {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="35" viewBox="0 0 60 35"><path d="M20 0 L40 0 L50 17.5 L40 35 L20 35 L10 17.5 Z M10 17.5 L0 17.5 M50 17.5 L60 17.5 M20 0 L10 17.5 M40 0 L50 17.5 M20 35 L10 17.5 M40 35 L50 17.5" fill="none" stroke="%23a7632b" stroke-opacity="0.05" stroke-width="4"/></svg>');
+      background-size: 60px 35px;
+      background-repeat: repeat;
+    }
+
+    .card {
+      background: #fcfbf8;
+      border: 1px solid #e8e2ce;
+      border-radius: 1rem;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .card:active {
+      transform: scale(0.98);
+      border-color: #fde68a;
+      box-shadow: 0 8px 20px -6px rgba(253, 230, 138, 0.4);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      min-height: 44px;
+      border-radius: 9999px;
+      font-weight: 700;
+      transition: transform 0.15s, background 0.15s;
+      text-decoration: none;
+      width: 100%;
+    }
+    .btn-primary {
+      background: #fde68a;
+      color: #1c180d;
+    }
+    .btn-primary:active {
+      background: #facc15;
+      transform: scale(0.97);
+    }
+    .btn-outline {
+      background: transparent;
+      color: #9c8749;
+      border: 2px solid #fde68a;
+    }
+    .btn-outline:active {
+      background: #fde68a;
+      color: #1c180d;
+      transform: scale(0.97);
+    }
+
+    .float {
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    body {
+      font-family: "Lexend", sans-serif;
+      background: #fcfbf8;
+      color: #1c180d;
+    }
+
+    .bg-grid-soft {
+      background-image: radial-gradient(circle at 20% 30%, rgba(253, 230, 138, 0.15) 0, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(253, 230, 138, 0.10) 0, transparent 45%);
+    }
+
+    .mobile-nav {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .mobile-nav.open {
+      max-height: 320px;
+    }
+  </style>
+</head>
+<body class="bg-panal bg-grid-soft min-h-screen flex flex-col">
+
+  <header class="border-b border-border-light bg-background-light/80 backdrop-blur-sm sticky top-0 z-20">
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-text-light">
+          <span class="icono">
+            <img src="icono.png" alt="Icono de código" />
+          </span>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold">DevMe</h1>
+          <p class="text-xs text-text-light-muted">Aprende programación en español</p>
+        </div>
+      </div>
+      <button id="menu-toggle" class="w-11 h-11 flex items-center justify-center rounded-full active:bg-primary/30 transition" aria-label="Abrir menú">
+        <span id="menu-icon" class="material-symbols-outlined text-3xl text-text-light">menu</span>
+      </button>
+    </div>
+    <nav id="mobile-nav" class="mobile-nav border-t border-border-light bg-background-light/95 backdrop-blur-sm">
+      <ul class="flex flex-col px-4 py-2 gap-1">
+        <li><a href="#" class="block py-3 px-3 rounded-lg text-text-light/80 font-medium active:bg-primary/20 transition">Inicio</a></li>
+        <li><a href="jugar/index.html" class="block py-3 px-3 rounded-lg text-text-light/80 font-medium active:bg-primary/20 transition">Jugar</a></li>
+        <li><a href="jugar/editor.html" class="block py-3 px-3 rounded-lg text-text-light/80 font-medium active:bg-primary/20 transition">Editor de Niveles</a></li>
+        <li><a href="programar/index.html" class="block py-3 px-3 rounded-lg text-text-light/80 font-medium active:bg-primary/20 transition">Programar</a></li>
+        <li><a href="jugar/MiniJuegoTipodDato/index.html" class="block py-3 px-3 rounded-lg text-text-light/80 font-medium active:bg-primary/20 transition">Data Assault</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="flex-1 px-4 py-8">
+    <div class="max-w-lg mx-auto">
+
+      <section class="mb-10">
+        <h2 class="text-4xl font-extrabold leading-tight">
+          Aprende a <span class="text-primary-dark">programar</span> jugando.
+        </h2>
+        <p class="mt-4 text-text-light/70 text-base leading-relaxed">
+          Escribe pseudocódigo en español y observa cómo tu personaje
+          resuelve retos, recorre laberintos y automatiza tareas.
+          Domina condicionales, ciclos y funciones paso a paso.
+        </p>
+
+        <div class="mt-6 flex flex-col gap-3">
+          <a href="jugar/index.html" class="btn btn-primary">
+            <span class="material-symbols-outlined">sports_esports</span>
+            Empezar a jugar
+          </a>
+          <a href="jugar/editor.html" class="btn btn-outline">
+            <span class="material-symbols-outlined">edit_note</span>
+            Editor de Niveles
+          </a>
+          <a href="programar/index.html" class="btn btn-outline">
+            <span class="material-symbols-outlined">terminal</span>
+            Abrir editor
+          </a>
+          <a href="jugar/MiniJuegoTipodDato/index.html" class="btn btn-outline">
+            <span class="material-symbols-outlined">rocket_launch</span>
+            Data Assault
+          </a>
+        </div>
+
+        <div class="mt-8 flex justify-center gap-8 text-center text-sm text-text-light-muted">
+          <div><span class="font-bold text-2xl text-primary-dark">15</span><br />Niveles</div>
+          <div><span class="font-bold text-2xl text-primary-dark">20+</span><br />Comandos</div>
+          <div><span class="font-bold text-2xl text-primary-dark">100%</span><br />Español</div>
+        </div>
+      </section>
+
+      <section class="flex flex-col gap-5">
+        <a href="jugar/index.html" class="card p-5 flex gap-4 items-center">
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 float bg-primary-bg text-primary-dark">
+            <span class="material-symbols-outlined" style="font-size:36px">videogame_asset</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg font-bold">Modo Jugar</h3>
+            <p class="text-sm text-text-light-muted mt-1">Resuelve 15 niveles escribiendo algoritmos. Mueve al personaje, recoge objetos, abre puertas y resuelve laberintos.</p>
+          </div>
+          <span class="material-symbols-outlined text-text-light-muted/50 shrink-0">arrow_forward</span>
+        </a>
+
+        <a href="jugar/editor.html" class="card p-5 flex gap-4 items-center">
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 float bg-primary-bg text-primary-dark" style="animation-delay:-2s;">
+            <span class="material-symbols-outlined" style="font-size:36px">edit_note</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg font-bold">Editor de Niveles</h3>
+            <p class="text-sm text-text-light-muted mt-1">Crea y edita tus propios niveles. Diseña mapas, coloca elementos y genera el código para compartirlos.</p>
+          </div>
+          <span class="material-symbols-outlined text-text-light-muted/50 shrink-0">arrow_forward</span>
+        </a>
+
+        <a href="programar/index.html" class="card p-5 flex gap-4 items-center">
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 float bg-primary-bg text-primary-dark" style="animation-delay:-3s;">
+            <span class="material-symbols-outlined" style="font-size:36px">integration_instructions</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg font-bold">Modo Programar</h3>
+            <p class="text-sm text-text-light-muted mt-1">Editor libre de pseudocódigo. Experimenta con variables, ciclos, condicionales y funciones sin restricciones de nivel.</p>
+          </div>
+          <span class="material-symbols-outlined text-text-light-muted/50 shrink-0">arrow_forward</span>
+        </a>
+
+        <a href="jugar/MiniJuegoTipodDato/index.html" class="card p-5 flex gap-4 items-center">
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 float bg-primary-bg text-primary-dark" style="animation-delay:-4s;">
+            <span class="material-symbols-outlined" style="font-size:36px">rocket_launch</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg font-bold">Data Assault</h3>
+            <p class="text-sm text-text-light-muted mt-1">Minijuego de tipos de datos. Clasifica enteros, flotantes, cadenas y booleanos mientras defiendes el ciberespacio.</p>
+          </div>
+          <span class="material-symbols-outlined text-text-light-muted/50 shrink-0">arrow_forward</span>
+        </a>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="text-center text-xs text-text-light-muted/60 py-3 border-t border-border-light">
+    DevMe — Enseñanza de programación estructurada en español
+  </footer>
+
+  <script>
+    (function () {
+      var toggle = document.getElementById('menu-toggle');
+      var nav = document.getElementById('mobile-nav');
+      var icon = document.getElementById('menu-icon');
+
+      toggle.addEventListener('click', function () {
+        var isOpen = nav.classList.toggle('open');
+        icon.textContent = isOpen ? 'close' : 'menu';
+        toggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
+      });
+
+      nav.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          nav.classList.remove('open');
+          icon.textContent = 'menu';
+          toggle.setAttribute('aria-label', 'Abrir menú');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
