@@ -1092,338 +1092,365 @@
        ============================================================ -->
   <script>
   (function() {
+    'use strict';
+    
     // Only run on mobile
     function isMobile() { return window.innerWidth < 768; }
 
-    // ---- FAB Dragging ----
-    function makeDraggable(container) {
-      let startX, startY, origX, origY, dragging = false, moved = false;
+    // Wait for DOM to be ready
+    function ready(fn) {
+      if (document.readyState !== 'loading') {
+        fn();
+      } else {
+        document.addEventListener('DOMContentLoaded', fn);
+      }
+    }
 
-      function onStart(e) {
-        if (!isMobile()) return;
-        const touch = e.touches ? e.touches[0] : e;
-        const rect = container.getBoundingClientRect();
-        startX = touch.clientX;
-        startY = touch.clientY;
-        origX = rect.left;
-        origY = rect.top;
-        dragging = true;
-        moved = false;
-        e.preventDefault();
+    ready(function() {
+      console.log('Mobile JS initialized');
+      
+      // ---- FAB Elements ----
+      const fabExecContainer = document.getElementById('fab-exec-container');
+      const fabBlocksContainer = document.getElementById('fab-blocks-container');
+      const fabExecMenu = document.getElementById('fab-exec-menu');
+      const fabExec = document.getElementById('fab-exec');
+      const fabBlocks = document.getElementById('fab-blocks');
+      
+      if (!fabExecContainer || !fabBlocksContainer) {
+        console.error('FAB containers not found');
+        return;
       }
 
-      function onMove(e) {
-        if (!dragging) return;
-        const touch = e.touches ? e.touches[0] : e;
-        const dx = touch.clientX - startX;
-        const dy = touch.clientY - startY;
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
-        if (!moved) return;
+      // ---- FAB Dragging ----
+      function makeDraggable(container, clickHandler) {
+        let startX, startY, origX, origY, dragging = false, moved = false;
 
-        let newX = origX + dx;
-        let newY = origY + dy;
-        // Clamp to viewport
-        const w = container.offsetWidth;
-        const h = container.offsetHeight;
-        newX = Math.max(8, Math.min(window.innerWidth - w - 8, newX));
-        newY = Math.max(8, Math.min(window.innerHeight - h - 8, newY));
-
-        container.style.left = newX + 'px';
-        container.style.top = newY + 'px';
-        container.style.right = 'auto';
-        container.style.bottom = 'auto';
-        e.preventDefault();
-      }
-
-      function onEnd(e) {
-        if (dragging && !moved) {
-          // It was a tap, not a drag — handle click
-          handleClick(container);
+        function onStart(e) {
+          if (!isMobile()) return;
+          const touch = e.touches ? e.touches[0] : e;
+          const rect = container.getBoundingClientRect();
+          startX = touch.clientX;
+          startY = touch.clientY;
+          origX = rect.left;
+          origY = rect.top;
+          dragging = true;
+          moved = false;
         }
-        dragging = false;
-        moved = false;
+
+        function onMove(e) {
+          if (!dragging) return;
+          const touch = e.touches ? e.touches[0] : e;
+          const dx = touch.clientX - startX;
+          const dy = touch.clientY - startY;
+          if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            moved = true;
+            e.preventDefault();
+          }
+          if (!moved) return;
+
+          let newX = origX + dx;
+          let newY = origY + dy;
+          const w = container.offsetWidth;
+          const h = container.offsetHeight;
+          newX = Math.max(8, Math.min(window.innerWidth - w - 8, newX));
+          newY = Math.max(8, Math.min(window.innerHeight - h - 8, newY));
+
+          container.style.left = newX + 'px';
+          container.style.top = newY + 'px';
+          container.style.right = 'auto';
+          container.style.bottom = 'auto';
+        }
+
+        function onEnd(e) {
+          if (dragging && !moved) {
+            clickHandler();
+          }
+          dragging = false;
+          moved = false;
+        }
+
+        container.addEventListener('mousedown', onStart);
+        container.addEventListener('touchstart', onStart, { passive: true });
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchend', onEnd);
       }
 
-      container.addEventListener('mousedown', onStart);
-      container.addEventListener('touchstart', onStart, { passive: false });
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('mouseup', onEnd);
-      document.addEventListener('touchend', onEnd);
-    }
-
-    // ---- FAB Click Handlers ----
-    const fabExecMenu = document.getElementById('fab-exec-menu');
-    const fabExec = document.getElementById('fab-exec');
-
-    function handleClick(container) {
-      if (container.id === 'fab-exec-container') {
+      // ---- FAB Click Handlers ----
+      function toggleExecMenu() {
+        console.log('Toggle exec menu');
         fabExecMenu.classList.toggle('show');
-      } else if (container.id === 'fab-blocks-container') {
+      }
+
+      function openMobileBlocksPanel() {
+        console.log('Open blocks panel');
+        const panel = document.getElementById('mobile-blocks-panel');
+        const overlay = document.getElementById('mobile-blocks-overlay');
+        if (!panel || !overlay) return;
+        
+        panel.style.display = 'flex';
+        overlay.style.display = 'block';
+        requestAnimationFrame(function() {
+          panel.classList.add('open');
+          overlay.classList.add('show');
+        });
+        populateMobileBlocks();
+      }
+
+      // Make FABs draggable
+      makeDraggable(fabExecContainer, toggleExecMenu);
+      makeDraggable(fabBlocksContainer, openMobileBlocksPanel);
+
+      // Add click handlers directly to FAB buttons
+      fabExec.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleExecMenu();
+      });
+
+      fabBlocks.addEventListener('click', function(e) {
+        e.stopPropagation();
         openMobileBlocksPanel();
-      }
-    }
+      });
 
-    // Close exec menu when clicking outside
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('#fab-exec-container')) {
+      // Close exec menu when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#fab-exec-container') && fabExecMenu) {
+          fabExecMenu.classList.remove('show');
+        }
+      });
+
+      // ---- FAB Menu Actions ----
+      function triggerDesktopBtn(id) {
+        const btn = document.getElementById(id);
+        if (btn) {
+          console.log('Triggering button:', id);
+          btn.click();
+        } else {
+          console.warn('Button not found:', id);
+        }
+      }
+
+      document.getElementById('fab-play').addEventListener('click', function() {
+        triggerDesktopBtn('btn-run');
         fabExecMenu.classList.remove('show');
-      }
-    });
-    document.addEventListener('touchstart', function(e) {
-      if (!e.target.closest('#fab-exec-container')) {
+        fabExec.classList.add('running');
+        fabExec.querySelector('.material-symbols-outlined').textContent = 'play_circle';
+      });
+      
+      document.getElementById('fab-pause').addEventListener('click', function() {
+        triggerDesktopBtn('btn-pause');
         fabExecMenu.classList.remove('show');
+        fabExec.classList.remove('running');
+        fabExec.classList.add('paused');
+        fabExec.querySelector('.material-symbols-outlined').textContent = 'pause';
+      });
+      
+      document.getElementById('fab-stop').addEventListener('click', function() {
+        triggerDesktopBtn('btn-stop');
+        fabExecMenu.classList.remove('show');
+        fabExec.classList.remove('running', 'paused');
+        fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+      });
+      
+      document.getElementById('fab-step').addEventListener('click', function() {
+        const stepMode = document.getElementById('step-mode');
+        if (stepMode && !stepMode.checked) stepMode.checked = true;
+        triggerDesktopBtn('btn-run');
+        fabExecMenu.classList.remove('show');
+      });
+      
+      document.getElementById('fab-reset').addEventListener('click', function() {
+        triggerDesktopBtn('btn-reset');
+        fabExecMenu.classList.remove('show');
+        fabExec.classList.remove('running', 'paused');
+        fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+      });
+      
+      document.getElementById('fab-clear').addEventListener('click', function() {
+        triggerDesktopBtn('btn-clear-console');
+        fabExecMenu.classList.remove('show');
+      });
+      
+      document.getElementById('fab-levels').addEventListener('click', function() {
+        triggerDesktopBtn('btn-levels');
+        fabExecMenu.classList.remove('show');
+      });
+      
+      document.getElementById('fab-editor-link').addEventListener('click', function() {
+        window.location.href = 'editor.html';
+      });
+
+      // ---- Mobile Blocks Panel ----
+      const mobilePanel = document.getElementById('mobile-blocks-panel');
+      const mobileOverlay = document.getElementById('mobile-blocks-overlay');
+
+      function closeMobileBlocksPanel() {
+        if (!mobilePanel || !mobileOverlay) return;
+        mobilePanel.classList.remove('open');
+        mobileOverlay.classList.remove('show');
+        setTimeout(function() {
+          mobilePanel.style.display = 'none';
+          mobileOverlay.style.display = 'none';
+        }, 300);
       }
-    });
 
-    // ---- FAB Menu Actions ----
-    function triggerDesktopBtn(id) {
-      const btn = document.getElementById(id);
-      if (btn) btn.click();
-    }
+      document.getElementById('mobile-blocks-close').addEventListener('click', closeMobileBlocksPanel);
+      mobileOverlay.addEventListener('click', closeMobileBlocksPanel);
 
-    document.getElementById('fab-play').addEventListener('click', function() {
-      triggerDesktopBtn('btn-run');
-      fabExecMenu.classList.remove('show');
-      fabExec.classList.add('running');
-      fabExec.querySelector('.material-symbols-outlined').textContent = 'play_circle';
-    });
-    document.getElementById('fab-pause').addEventListener('click', function() {
-      triggerDesktopBtn('btn-pause');
-      fabExecMenu.classList.remove('show');
-      fabExec.classList.remove('running');
-      fabExec.classList.add('paused');
-      fabExec.querySelector('.material-symbols-outlined').textContent = 'pause';
-    });
-    document.getElementById('fab-stop').addEventListener('click', function() {
-      triggerDesktopBtn('btn-stop');
-      fabExecMenu.classList.remove('show');
-      fabExec.classList.remove('running', 'paused');
-      fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
-    });
-    document.getElementById('fab-step').addEventListener('click', function() {
-      const stepMode = document.getElementById('step-mode');
-      if (stepMode && !stepMode.checked) stepMode.checked = true;
-      triggerDesktopBtn('btn-run');
-      fabExecMenu.classList.remove('show');
-    });
-    document.getElementById('fab-reset').addEventListener('click', function() {
-      triggerDesktopBtn('btn-reset');
-      fabExecMenu.classList.remove('show');
-      fabExec.classList.remove('running', 'paused');
-      fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
-    });
-    document.getElementById('fab-clear').addEventListener('click', function() {
-      triggerDesktopBtn('btn-clear-console');
-      fabExecMenu.classList.remove('show');
-    });
-    document.getElementById('fab-levels').addEventListener('click', function() {
-      triggerDesktopBtn('btn-levels');
-      fabExecMenu.classList.remove('show');
-    });
-    document.getElementById('fab-editor-link').addEventListener('click', function() {
-      window.location.href = 'editor.html';
-    });
-
-    // ---- Mobile Blocks Panel ----
-    const mobilePanel = document.getElementById('mobile-blocks-panel');
-    const mobileOverlay = document.getElementById('mobile-blocks-overlay');
-
-    function openMobileBlocksPanel() {
-      mobilePanel.style.display = 'flex';
-      mobileOverlay.style.display = 'block';
-      // Animate in
-      requestAnimationFrame(() => {
-        mobilePanel.classList.add('open');
-        mobileOverlay.classList.add('show');
-      });
-      // Populate blocks if empty
-      populateMobileBlocks();
-    }
-
-    function closeMobileBlocksPanel() {
-      mobilePanel.classList.remove('open');
-      mobileOverlay.classList.remove('show');
-      setTimeout(() => {
-        mobilePanel.style.display = 'none';
-        mobileOverlay.style.display = 'none';
-      }, 300);
-    }
-
-    document.getElementById('mobile-blocks-close').addEventListener('click', closeMobileBlocksPanel);
-    mobileOverlay.addEventListener('click', closeMobileBlocksPanel);
-
-    // ---- Populate Mobile Blocks ----
-    function populateMobileBlocks() {
-      const mobilePal = document.getElementById('mobile-block-palette');
-      const desktopPal = document.getElementById('block-palette');
-      if (!desktopPal || !mobilePal) return;
-      // Clone the desktop palette content
-      mobilePal.innerHTML = desktopPal.innerHTML;
-      // Replace drag with tap-to-add for mobile
-      setupMobileBlockTap(mobilePal);
-    }
-
-    // ---- Mobile Block Tap-to-Add ----
-    function setupMobileBlockTap(container) {
-      const items = container.querySelectorAll('.block-palette-item');
-      items.forEach(item => {
-        // Remove draggable attribute for mobile
-        item.removeAttribute('draggable');
-        item.style.cursor = 'pointer';
-
-        // Add tap handler
-        item.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          const blockType = this.dataset.blockType;
-          if (!blockType) return;
-
-          // Switch to blocks tab if not already
-          const blocksTab = document.querySelector('.main-tab[data-main-tab="blocks"]');
-          if (blocksTab && !blocksTab.classList.contains('active')) {
-            blocksTab.click();
-          }
-
-          // Add block to workspace using BlockEditor API
-          if (window.BlockEditor && window.BlockEditor.createBlock) {
-            const newBlock = window.BlockEditor.createBlock(blockType);
-            if (newBlock) {
-              const currentBlocks = window.BlockEditor.getBlocks();
-              currentBlocks.push(newBlock);
-              window.BlockEditor.setBlocks(currentBlocks);
-            }
-          }
-
-          // Visual feedback
-          this.style.transform = 'scale(0.95)';
-          setTimeout(() => { this.style.transform = ''; }, 150);
-        });
-
-        // Prevent drag on mobile
-        item.addEventListener('dragstart', function(e) {
-          e.preventDefault();
-        });
-      });
-
-      // Make category headers toggleable
-      const headers = container.querySelectorAll('.category-header');
-      headers.forEach(header => {
-        header.addEventListener('click', function() {
-          const items = this.nextElementSibling;
-          if (items) {
-            const isHidden = items.style.display === 'none';
-            items.style.display = isHidden ? 'block' : 'none';
-            const arrow = this.querySelector('.cat-arrow');
-            if (arrow) {
-              arrow.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
-            }
-          }
-        });
-      });
-    }
-
-    // ---- Mobile Controls Sync ----
-      triggerDesktopBtn('btn-run');
-    });
-    document.getElementById('mob-pause').addEventListener('click', function() {
-      triggerDesktopBtn('btn-pause');
-    });
-    document.getElementById('mob-stop').addEventListener('click', function() {
-      triggerDesktopBtn('btn-stop');
-    });
-    document.getElementById('mob-reset').addEventListener('click', function() {
-      triggerDesktopBtn('btn-reset');
-    });
-    document.getElementById('mob-step').addEventListener('click', function() {
-      const stepMode = document.getElementById('step-mode');
-      if (stepMode && !stepMode.checked) stepMode.checked = true;
-      const mobStepMode = document.getElementById('mob-step-mode');
-      if (mobStepMode) mobStepMode.checked = true;
-      triggerDesktopBtn('btn-run');
-    });
-    document.getElementById('mob-step-mode').addEventListener('change', function() {
-      const desktop = document.getElementById('step-mode');
-      if (desktop) desktop.checked = this.checked;
-    });
-    document.getElementById('mob-speed').addEventListener('input', function() {
-      const desktop = document.getElementById('game-speed');
-      if (desktop) desktop.value = this.value;
-      const lbl = document.getElementById('mob-speed-lbl');
-      const delay = Math.max(50, 850 - parseInt(this.value));
-      if (lbl) lbl.textContent = delay + 'ms';
-      // Also update desktop label
-      const dLbl = document.getElementById('game-speed-lbl');
-      if (dLbl) dLbl.textContent = delay + 'ms';
-    });
-    document.getElementById('mob-example-select').addEventListener('change', function() {
-      const desktop = document.getElementById('example-select');
-      if (desktop) desktop.value = this.value;
-    });
-    document.getElementById('mob-btn-example').addEventListener('click', function() {
-      triggerDesktopBtn('btn-example');
-    });
-    document.getElementById('mob-btn-levels').addEventListener('click', function() {
-      triggerDesktopBtn('btn-levels');
-    });
-
-    // Sync example select
-    function syncExampleSelect() {
-      const desktop = document.getElementById('example-select');
-      const mobile = document.getElementById('mob-example-select');
-      if (desktop && mobile) {
-        mobile.innerHTML = desktop.innerHTML;
+      // ---- Populate Mobile Blocks ----
+      function populateMobileBlocks() {
+        const mobilePal = document.getElementById('mobile-block-palette');
+        const desktopPal = document.getElementById('block-palette');
+        if (!desktopPal || !mobilePal) {
+          console.warn('Palette elements not found');
+          return;
+        }
+        mobilePal.innerHTML = desktopPal.innerHTML;
+        setupMobileBlockTap(mobilePal);
       }
-    }
 
-    // ---- Touch support for existing block workspace ----
-    function addWorkspaceTouchSupport() {
-      const workspace = document.getElementById('block-workspace');
-      if (!workspace) return;
-      // Add touch-based block reordering on workspace
-      // For now, blocks can be added via the mobile palette panel
-    }
+      // ---- Mobile Block Tap-to-Add ----
+      function setupMobileBlockTap(container) {
+        const items = container.querySelectorAll('.block-palette-item');
+        items.forEach(function(item) {
+          item.removeAttribute('draggable');
+          item.style.cursor = 'pointer';
 
-    // ---- Make FABs draggable ----
-    makeDraggable(document.getElementById('fab-exec-container'));
-    makeDraggable(document.getElementById('fab-blocks-container'));
+          item.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const blockType = this.dataset.blockType;
+            if (!blockType) return;
 
-    // ---- Sync on load and resize ----
-    function onReady() {
+            const blocksTab = document.querySelector('.main-tab[data-main-tab="blocks"]');
+            if (blocksTab && !blocksTab.classList.contains('active')) {
+              blocksTab.click();
+            }
+
+            if (window.BlockEditor && window.BlockEditor.createBlock) {
+              const newBlock = window.BlockEditor.createBlock(blockType);
+              if (newBlock) {
+                const currentBlocks = window.BlockEditor.getBlocks();
+                currentBlocks.push(newBlock);
+                window.BlockEditor.setBlocks(currentBlocks);
+              }
+            }
+
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => { this.style.transform = ''; }, 150);
+          });
+
+          item.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+          });
+        });
+
+        const headers = container.querySelectorAll('.category-header');
+        headers.forEach(function(header) {
+          header.addEventListener('click', function() {
+            const items = this.nextElementSibling;
+            if (items) {
+              const isHidden = items.style.display === 'none';
+              items.style.display = isHidden ? 'block' : 'none';
+              const arrow = this.querySelector('.cat-arrow');
+              if (arrow) {
+                arrow.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+              }
+            }
+          });
+        });
+      }
+
+      // ---- Mobile Controls Sync ----
+      document.getElementById('mob-play').addEventListener('click', function() {
+        triggerDesktopBtn('btn-run');
+      });
+      document.getElementById('mob-pause').addEventListener('click', function() {
+        triggerDesktopBtn('btn-pause');
+      });
+      document.getElementById('mob-stop').addEventListener('click', function() {
+        triggerDesktopBtn('btn-stop');
+      });
+      document.getElementById('mob-reset').addEventListener('click', function() {
+        triggerDesktopBtn('btn-reset');
+      });
+      document.getElementById('mob-step').addEventListener('click', function() {
+        const stepMode = document.getElementById('step-mode');
+        if (stepMode && !stepMode.checked) stepMode.checked = true;
+        const mobStepMode = document.getElementById('mob-step-mode');
+        if (mobStepMode) mobStepMode.checked = true;
+        triggerDesktopBtn('btn-run');
+      });
+      document.getElementById('mob-step-mode').addEventListener('change', function() {
+        const desktop = document.getElementById('step-mode');
+        if (desktop) desktop.checked = this.checked;
+      });
+      document.getElementById('mob-speed').addEventListener('input', function() {
+        const desktop = document.getElementById('game-speed');
+        if (desktop) desktop.value = this.value;
+        const lbl = document.getElementById('mob-speed-lbl');
+        const delay = Math.max(50, 850 - parseInt(this.value));
+        if (lbl) lbl.textContent = delay + 'ms';
+        const dLbl = document.getElementById('game-speed-lbl');
+        if (dLbl) dLbl.textContent = delay + 'ms';
+      });
+      document.getElementById('mob-example-select').addEventListener('change', function() {
+        const desktop = document.getElementById('example-select');
+        if (desktop) desktop.value = this.value;
+      });
+      document.getElementById('mob-btn-example').addEventListener('click', function() {
+        triggerDesktopBtn('btn-example');
+      });
+      document.getElementById('mob-btn-levels').addEventListener('click', function() {
+        triggerDesktopBtn('btn-levels');
+      });
+
+      // ---- Sync example select ----
+      function syncExampleSelect() {
+        const desktop = document.getElementById('example-select');
+        const mobile = document.getElementById('mob-example-select');
+        if (desktop && mobile) {
+          mobile.innerHTML = desktop.innerHTML;
+        }
+      }
+
+      // ---- Workspace touch support ----
+      function addWorkspaceTouchSupport() {
+        const workspace = document.getElementById('block-workspace');
+        if (!workspace) return;
+      }
+
+      // ---- Initialize ----
       syncExampleSelect();
       addWorkspaceTouchSupport();
-    }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', onReady);
-    } else {
-      onReady();
-    }
+      setTimeout(syncExampleSelect, 1000);
+      setTimeout(syncExampleSelect, 3000);
 
-    // Periodically sync example select (in case it's populated later)
-    setTimeout(syncExampleSelect, 1000);
-    setTimeout(syncExampleSelect, 3000);
+      // ---- Update FAB icon based on game state ----
+      const origStatusChip = document.getElementById('game-status-chip');
+      if (origStatusChip) {
+        const observer = new MutationObserver(function() {
+          const text = origStatusChip.textContent || '';
+          if (text.includes('Ejecutando') || text.includes('Running')) {
+            fabExec.classList.add('running');
+            fabExec.classList.remove('paused');
+            fabExec.querySelector('.material-symbols-outlined').textContent = 'play_circle';
+          } else if (text.includes('Pausa') || text.includes('Paused')) {
+            fabExec.classList.remove('running');
+            fabExec.classList.add('paused');
+            fabExec.querySelector('.material-symbols-outlined').textContent = 'pause';
+          } else {
+            fabExec.classList.remove('running', 'paused');
+            fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+          }
+        });
+        observer.observe(origStatusChip, { childList: true, characterData: true, subtree: true });
+      }
 
-    // ---- Update FAB icon based on game state ----
-    const origStatusChip = document.getElementById('game-status-chip');
-    if (origStatusChip) {
-      const observer = new MutationObserver(function() {
-        const text = origStatusChip.textContent || '';
-        if (text.includes('Ejecutando') || text.includes('Running')) {
-          fabExec.classList.add('running');
-          fabExec.classList.remove('paused');
-          fabExec.querySelector('.material-symbols-outlined').textContent = 'play_circle';
-        } else if (text.includes('Pausa') || text.includes('Paused')) {
-          fabExec.classList.remove('running');
-          fabExec.classList.add('paused');
-          fabExec.querySelector('.material-symbols-outlined').textContent = 'pause';
-        } else {
-          fabExec.classList.remove('running', 'paused');
-          fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
-        }
-      });
-      observer.observe(origStatusChip, { childList: true, characterData: true, subtree: true });
-    }
+      console.log('Mobile JS initialization complete');
+    });
   })();
   </script>
 </body>
