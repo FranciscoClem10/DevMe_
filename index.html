@@ -530,21 +530,57 @@
   /* FAB buttons bigger touch targets */
   .fab-btn { width: 56px; height: 56px; }
   .fab-btn .material-symbols-outlined { font-size: 28px; }
-  .fab-menu { min-width: 160px; }
-  .fab-menu-item { padding: 12px 14px; font-size: 13px; }
+  .fab-menu { min-width: 160px; max-height: 70vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .fab-menu-item { 
+    padding: 14px 16px; 
+    font-size: 14px; 
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+  }
+  .fab-menu-item .material-symbols-outlined { font-size: 22px; }
 
   /* Mobile blocks panel improvements */
-  #mobile-blocks-panel { width: 260px; }
+  #mobile-blocks-panel { width: 280px; max-width: 85vw; }
   .mobile-blocks-header { padding: 14px 14px; }
   .mobile-blocks-header .title { font-size: 15px; }
-  .mobile-controls-section { padding: 10px 14px; }
+  .mobile-blocks-header .close-btn { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  .mobile-controls-section { padding: 12px 14px; }
+  .mobile-controls-section button,
+  .mobile-controls-section select {
+    min-height: 40px;
+    font-size: 13px;
+  }
 
   /* Better touch targets for tabs */
-  .main-tab { padding: 10px 12px; }
-  .tabs .tab { padding: 8px 12px; font-size: 12px; }
+  .main-tab { padding: 10px 12px; min-height: 44px; }
+  .tabs .tab { padding: 10px 14px; font-size: 12px; min-height: 40px; }
 
   /* Console panel slightly taller on mobile */
   #console-panel { height: 160px; }
+
+  /* Console drag handle - more visible on mobile */
+  #split-divider { 
+    min-height: 20px; 
+    padding: 4px 0;
+    position: relative;
+  }
+  #split-divider::before {
+    content: '⋮⋮⋮';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #9c8749;
+    font-size: 12px;
+    letter-spacing: 2px;
+    opacity: 0.6;
+  }
+  #split-divider:hover::before,
+  #split-divider.active::before {
+    opacity: 1;
+    color: #1c180d;
+  }
 }
 
 /* ============================================================
@@ -556,6 +592,8 @@
   z-index: 900;
   touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .fab-btn {
   width: 52px;
@@ -569,9 +607,10 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.12);
   transition: transform 0.15s, box-shadow 0.15s;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 .fab-btn:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-.fab-btn .material-symbols-outlined { font-size: 26px; }
+.fab-btn .material-symbols-outlined { font-size: 26px; pointer-events: none; }
 
 #fab-exec { background: #f4c025; color: #1c180d; }
 #fab-exec.running { background: #22863a; color: #fff; }
@@ -589,6 +628,7 @@
   display: none;
   min-width: 180px;
   z-index: 910;
+  -webkit-overflow-scrolling: touch;
 }
 .fab-menu.show { display: block; }
 .fab-menu-item {
@@ -607,9 +647,12 @@
   text-align: left;
   transition: background 0.12s;
   font-family: 'Lexend', sans-serif;
+  -webkit-tap-highlight-color: rgba(244,192,37,0.2);
+  touch-action: manipulation;
 }
 .fab-menu-item:hover, .fab-menu-item:active { background: rgba(244,192,37,0.12); }
-.fab-menu-item .material-symbols-outlined { font-size: 20px; color: #9c8749; }
+.fab-menu-item:active { background: rgba(244,192,37,0.25); }
+.fab-menu-item .material-symbols-outlined { font-size: 20px; color: #9c8749; pointer-events: none; }
 .fab-menu-item.play { color: #22863a; }
 .fab-menu-item.play .material-symbols-outlined { color: #22863a; }
 .fab-menu-item.stop { color: #b31d28; }
@@ -1312,22 +1355,16 @@
   (function() {
     'use strict';
     
-    // Only run on mobile
     function isMobile() { return window.innerWidth < 768; }
 
-    // Wait for DOM to be ready
     function ready(fn) {
-      if (document.readyState !== 'loading') {
-        fn();
-      } else {
-        document.addEventListener('DOMContentLoaded', fn);
-      }
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
     }
 
     ready(function() {
       console.log('Mobile JS initialized');
       
-      // ---- FAB Elements ----
       const fabExecContainer = document.getElementById('fab-exec-container');
       const fabBlocksContainer = document.getElementById('fab-blocks-container');
       const fabExecMenu = document.getElementById('fab-exec-menu');
@@ -1339,20 +1376,37 @@
         return;
       }
 
-      // ---- FAB Dragging ----
-      function makeDraggable(container, clickHandler) {
-        let startX, startY, origX, origY, dragging = false, moved = false;
+      // ---- Improved FAB Dragging (drag on button only, not menu) ----
+      function makeDraggable(button, container, clickHandler) {
+        let startX, startY, origLeft, origTop, dragging = false, moved = false;
+        let longPressTimer = null;
+        let isLongPress = false;
+
+        function getOrigPos() {
+          const rect = container.getBoundingClientRect();
+          origLeft = rect.left;
+          origTop = rect.top;
+        }
 
         function onStart(e) {
           if (!isMobile()) return;
+          // Don't drag if touching the menu
+          if (e.target.closest('.fab-menu')) return;
+          
           const touch = e.touches ? e.touches[0] : e;
-          const rect = container.getBoundingClientRect();
           startX = touch.clientX;
           startY = touch.clientY;
-          origX = rect.left;
-          origY = rect.top;
+          getOrigPos();
           dragging = true;
           moved = false;
+          isLongPress = false;
+
+          // Start long-press timer (500ms to enter drag mode)
+          longPressTimer = setTimeout(function() {
+            isLongPress = true;
+            button.style.transform = 'scale(0.9)';
+            button.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+          }, 500);
         }
 
         function onMove(e) {
@@ -1360,14 +1414,22 @@
           const touch = e.touches ? e.touches[0] : e;
           const dx = touch.clientX - startX;
           const dy = touch.clientY - startY;
-          if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+          
+          if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
             moved = true;
-            e.preventDefault();
+            clearTimeout(longPressTimer);
+            // If moved significantly, treat as drag even without long press
+            if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+              isLongPress = true;
+            }
           }
-          if (!moved) return;
+          
+          if (!isLongPress) return;
+          e.preventDefault();
+          e.stopPropagation();
 
-          let newX = origX + dx;
-          let newY = origY + dy;
+          let newX = origLeft + dx;
+          let newY = origTop + dy;
           const w = container.offsetWidth;
           const h = container.offsetHeight;
           newX = Math.max(8, Math.min(window.innerWidth - w - 8, newX));
@@ -1380,15 +1442,27 @@
         }
 
         function onEnd(e) {
+          clearTimeout(longPressTimer);
+          button.style.transform = '';
+          button.style.boxShadow = '';
+          
           if (dragging && !moved) {
+            // Quick tap = click
+            clickHandler();
+          } else if (dragging && moved && !isLongPress) {
+            // Small movement without long press = still a click
             clickHandler();
           }
+          // else: was a drag, don't trigger click
+          
           dragging = false;
           moved = false;
+          isLongPress = false;
         }
 
-        container.addEventListener('mousedown', onStart);
-        container.addEventListener('touchstart', onStart, { passive: true });
+        // Attach drag handlers only to the button, not the container
+        button.addEventListener('mousedown', onStart);
+        button.addEventListener('touchstart', onStart, { passive: true });
         document.addEventListener('mousemove', onMove);
         document.addEventListener('touchmove', onMove, { passive: false });
         document.addEventListener('mouseup', onEnd);
@@ -1396,13 +1470,13 @@
       }
 
       // ---- FAB Click Handlers ----
-      function toggleExecMenu() {
-        console.log('Toggle exec menu');
+      function toggleExecMenu(e) {
+        if (e) e.stopPropagation();
         fabExecMenu.classList.toggle('show');
       }
 
-      function openMobileBlocksPanel() {
-        console.log('Open blocks panel');
+      function openMobileBlocksPanel(e) {
+        if (e) e.stopPropagation();
         const panel = document.getElementById('mobile-blocks-panel');
         const overlay = document.getElementById('mobile-blocks-overlay');
         if (!panel || !overlay) return;
@@ -1416,19 +1490,17 @@
         populateMobileBlocks();
       }
 
-      // Make FABs draggable
-      makeDraggable(fabExecContainer, toggleExecMenu);
-      makeDraggable(fabBlocksContainer, openMobileBlocksPanel);
+      // Setup draggable FABs
+      makeDraggable(fabExec, fabExecContainer, toggleExecMenu);
+      makeDraggable(fabBlocks, fabBlocksContainer, openMobileBlocksPanel);
 
-      // Add click handlers directly to FAB buttons
-      fabExec.addEventListener('click', function(e) {
+      // Prevent menu touches from triggering FAB drag
+      fabExecMenu.addEventListener('touchstart', function(e) {
         e.stopPropagation();
-        toggleExecMenu();
-      });
-
-      fabBlocks.addEventListener('click', function(e) {
+      }, { passive: true });
+      
+      fabExecMenu.addEventListener('mousedown', function(e) {
         e.stopPropagation();
-        openMobileBlocksPanel();
       });
 
       // Close exec menu when clicking outside
@@ -1449,14 +1521,39 @@
         }
       }
 
-      document.getElementById('fab-play').addEventListener('click', function() {
+      // Use touchend for faster response on mobile
+      function addFastClick(elementId, handler) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        
+        let touched = false;
+        
+        el.addEventListener('touchend', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          touched = true;
+          handler();
+          setTimeout(function() { touched = false; }, 300);
+        }, { passive: false });
+        
+        el.addEventListener('click', function(e) {
+          if (touched) {
+            e.preventDefault();
+            return;
+          }
+          e.stopPropagation();
+          handler();
+        });
+      }
+
+      addFastClick('fab-play', function() {
         triggerDesktopBtn('btn-run');
         fabExecMenu.classList.remove('show');
         fabExec.classList.add('running');
         fabExec.querySelector('.material-symbols-outlined').textContent = 'play_circle';
       });
       
-      document.getElementById('fab-pause').addEventListener('click', function() {
+      addFastClick('fab-pause', function() {
         triggerDesktopBtn('btn-pause');
         fabExecMenu.classList.remove('show');
         fabExec.classList.remove('running');
@@ -1464,28 +1561,28 @@
         fabExec.querySelector('.material-symbols-outlined').textContent = 'pause';
       });
       
-      document.getElementById('fab-stop').addEventListener('click', function() {
+      addFastClick('fab-stop', function() {
         triggerDesktopBtn('btn-stop');
         fabExecMenu.classList.remove('show');
         fabExec.classList.remove('running', 'paused');
         fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
       });
       
-      document.getElementById('fab-step').addEventListener('click', function() {
+      addFastClick('fab-step', function() {
         const stepMode = document.getElementById('step-mode');
         if (stepMode && !stepMode.checked) stepMode.checked = true;
         triggerDesktopBtn('btn-run');
         fabExecMenu.classList.remove('show');
       });
       
-      document.getElementById('fab-reset').addEventListener('click', function() {
+      addFastClick('fab-reset', function() {
         triggerDesktopBtn('btn-reset');
         fabExecMenu.classList.remove('show');
         fabExec.classList.remove('running', 'paused');
         fabExec.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
       });
       
-      document.getElementById('fab-clear').addEventListener('click', function() {
+      addFastClick('fab-clear', function() {
         triggerDesktopBtn('btn-clear-console');
         fabExecMenu.classList.remove('show');
       });
@@ -1576,10 +1673,12 @@
         const desktop = document.getElementById('example-select');
         if (desktop) desktop.value = this.value;
       });
-      document.getElementById('mob-btn-example').addEventListener('click', function() {
+      
+      addFastClick('mob-btn-example', function() {
         triggerDesktopBtn('btn-example');
       });
-      document.getElementById('mob-btn-levels').addEventListener('click', function() {
+      
+      addFastClick('mob-btn-levels', function() {
         triggerDesktopBtn('btn-levels');
       });
 
@@ -1590,6 +1689,87 @@
         if (desktop && mobile) {
           mobile.innerHTML = desktop.innerHTML;
         }
+      }
+
+      // ---- Console Touch Resize ----
+      const consolePanel = document.getElementById('console-panel');
+      const splitDivider = document.getElementById('split-divider');
+      
+      if (consolePanel && splitDivider) {
+        let consoleResizing = false;
+        let consoleStartY = 0;
+        let consoleStartHeight = 0;
+
+        function startConsoleResize(clientY) {
+          consoleResizing = true;
+          consoleStartY = clientY;
+          consoleStartHeight = consolePanel.offsetHeight;
+          splitDivider.classList.add('active');
+        }
+
+        function doConsoleResize(clientY) {
+          if (!consoleResizing) return;
+          const delta = consoleStartY - clientY;
+          let newHeight = consoleStartHeight + delta;
+          const minHeight = 40;
+          const maxHeight = window.innerHeight - 100;
+          newHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
+          consolePanel.style.height = newHeight + 'px';
+        }
+
+        function endConsoleResize() {
+          if (consoleResizing) {
+            consoleResizing = false;
+            splitDivider.classList.remove('active');
+            try {
+              localStorage.setItem('consoleHeight', consolePanel.offsetHeight);
+            } catch(e) {}
+          }
+        }
+
+        // Touch events for console resize
+        splitDivider.addEventListener('touchstart', function(e) {
+          e.preventDefault();
+          const touch = e.touches[0];
+          startConsoleResize(touch.clientY);
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function(e) {
+          if (!consoleResizing) return;
+          e.preventDefault();
+          const touch = e.touches[0];
+          doConsoleResize(touch.clientY);
+        }, { passive: false });
+
+        document.addEventListener('touchend', function(e) {
+          if (consoleResizing) {
+            endConsoleResize();
+          }
+        });
+
+        // Double-tap to collapse/expand console
+        let lastTapTime = 0;
+        splitDivider.addEventListener('touchend', function(e) {
+          const now = Date.now();
+          if (now - lastTapTime < 300) {
+            // Double tap detected
+            e.preventDefault();
+            const currentHeight = consolePanel.offsetHeight;
+            if (currentHeight > 80) {
+              // Collapse to minimum
+              consolePanel.style.height = '40px';
+            } else {
+              // Expand to default
+              consolePanel.style.height = '200px';
+            }
+            try {
+              localStorage.setItem('consoleHeight', consolePanel.offsetHeight);
+            } catch(e) {}
+            lastTapTime = 0;
+          } else {
+            lastTapTime = now;
+          }
+        });
       }
 
       // ---- Workspace touch support ----
