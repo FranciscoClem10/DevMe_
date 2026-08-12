@@ -402,6 +402,52 @@
 }
 
 /* ============================================================
+   EDITOR TOOLBAR (Tab / Auto-indent buttons)
+   ============================================================ */
+.editor-toolbar {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.editor-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid #e8e2ce;
+  border-radius: 6px;
+  color: #9c8749;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Lexend', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.editor-toolbar-btn:hover {
+  background: rgba(244,192,37,0.12);
+  color: #1c180d;
+  border-color: #f4c025;
+}
+.editor-toolbar-btn:active {
+  transform: scale(0.96);
+}
+.editor-toolbar-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+.editor-toolbar-btn .btn-label {
+  font-size: 10px;
+}
+.editor-toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: #e8e2ce;
+  margin: 0 2px;
+}
+
+/* ============================================================
    MOBILE RESPONSIVE STYLES (only for screens < 768px)
    ============================================================ */
 @media (max-width: 767px) {
@@ -473,6 +519,32 @@
   .search-bar input { min-width: 120px; font-size: 11px; }
   .autocomplete-dropdown { font-size: 11px; max-height: 160px; }
   .autocomplete-item { padding: 5px 8px; }
+
+  /* Editor toolbar mobile */
+  .editor-toolbar { gap: 2px; }
+  .editor-toolbar-btn { padding: 2px 6px; font-size: 10px; }
+  .editor-toolbar-btn .material-symbols-outlined { font-size: 14px; }
+  .editor-toolbar-btn .btn-label { font-size: 9px; }
+  .editor-toolbar-sep { height: 14px; margin: 0 1px; }
+
+  /* FAB buttons bigger touch targets */
+  .fab-btn { width: 56px; height: 56px; }
+  .fab-btn .material-symbols-outlined { font-size: 28px; }
+  .fab-menu { min-width: 160px; }
+  .fab-menu-item { padding: 12px 14px; font-size: 13px; }
+
+  /* Mobile blocks panel improvements */
+  #mobile-blocks-panel { width: 260px; }
+  .mobile-blocks-header { padding: 14px 14px; }
+  .mobile-blocks-header .title { font-size: 15px; }
+  .mobile-controls-section { padding: 10px 14px; }
+
+  /* Better touch targets for tabs */
+  .main-tab { padding: 10px 12px; }
+  .tabs .tab { padding: 8px 12px; font-size: 12px; }
+
+  /* Console panel slightly taller on mobile */
+  #console-panel { height: 160px; }
 }
 
 /* ============================================================
@@ -799,6 +871,21 @@
             <div class="section-label">
               <span class="material-symbols-outlined">edit_note</span>
               Codigo PSeInt
+              <div class="editor-toolbar" id="editor-toolbar">
+                <button class="editor-toolbar-btn" id="btn-editor-tab" title="Insertar tabulacion (Tab)">
+                  <span class="material-symbols-outlined" style="font-size:16px;">format_indent_increase</span>
+                  <span class="btn-label">Tab</span>
+                </button>
+                <button class="editor-toolbar-btn" id="btn-editor-untab" title="Quitar tabulacion (Shift+Tab)">
+                  <span class="material-symbols-outlined" style="font-size:16px;">format_indent_decrease</span>
+                  <span class="btn-label">-Tab</span>
+                </button>
+                <div class="editor-toolbar-sep"></div>
+                <button class="editor-toolbar-btn" id="btn-editor-autoindent" title="Auto-indentar todo el codigo">
+                  <span class="material-symbols-outlined" style="font-size:16px;">auto_fix_high</span>
+                  <span class="btn-label">Auto</span>
+                </button>
+              </div>
             </div>
             <div style="flex:1; min-height:0; overflow:hidden;">
               <div class="editor-wrapper" style="border-radius:0; border:none; height:100%;">
@@ -983,6 +1070,167 @@
   <script src="js/game.js"></script>
 
   <!-- ============================================================
+       EDITOR TOOLBAR (Tab / Auto-indent)
+       ============================================================ -->
+  <script>
+  (function() {
+    'use strict';
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function() {
+      var textarea = document.getElementById('editor');
+      if (!textarea) return;
+      var INDENT = '    ';
+
+      var INCREASE_NEXT = /^(algoritmo|subproceso|funcion|si\s+.*\s+entonces|sino\s+si\s+.*\s+entonces|sino|mientras\s+.*\s+hacer|para\s+.*\s+hacer|repetir|segun\s+.*\s+hacer|caso\s+.+:|de\s+otro\s+modo\s*:)\s*$/i;
+      var DECREASE_CURRENT = /^(finsi|finsegun|finmientras|finpara|finsubproceso|finfuncion|finalgoritmo|sino|sino\s+si|de\s+otro\s+modo|caso\s+.+:|hasta\s+que)\s*$/i;
+
+      // Tab button
+      var btnTab = document.getElementById('btn-editor-tab');
+      if (btnTab) {
+        btnTab.addEventListener('click', function() {
+          textarea.focus();
+          var start = textarea.selectionStart;
+          var end = textarea.selectionEnd;
+          var value = textarea.value;
+
+          if (start === end) {
+            // No selection: insert indent at cursor
+            textarea.value = value.substring(0, start) + INDENT + value.substring(start);
+            textarea.selectionStart = textarea.selectionEnd = start + INDENT.length;
+          } else {
+            // Selection: indent all selected lines
+            var lines = value.split('\n');
+            var lineStartIdx = value.lastIndexOf('\n', Math.max(start - 1, 0)) + 1;
+            var lineEndIdx = value.indexOf('\n', end);
+            if (lineEndIdx === -1) lineEndIdx = value.length;
+
+            var lStart = 0, pos = 0;
+            for (var i = 0; i < lines.length; i++) {
+              if (pos >= start) break;
+              pos += lines[i].length + 1;
+              lStart++;
+            }
+            var lEnd = lStart; pos = 0;
+            for (var i = 0; i < lines.length; i++) {
+              if (pos >= end) break;
+              pos += lines[i].length + 1;
+              lEnd = i;
+            }
+            if (lEnd < lStart) lEnd = lStart;
+
+            for (var i = lStart; i <= lEnd; i++) {
+              lines[i] = INDENT + lines[i];
+            }
+            textarea.value = lines.join('\n');
+            textarea.selectionStart = start + INDENT.length;
+            textarea.selectionEnd = end + (lEnd - lStart + 1) * INDENT.length;
+          }
+          if (window.Editor && window.Editor.update) window.Editor.update();
+        });
+      }
+
+      // Un-tab button
+      var btnUntab = document.getElementById('btn-editor-untab');
+      if (btnUntab) {
+        btnUntab.addEventListener('click', function() {
+          textarea.focus();
+          var start = textarea.selectionStart;
+          var end = textarea.selectionEnd;
+          var value = textarea.value;
+
+          if (start === end) {
+            // No selection: remove indent from current line
+            var lineStart = value.lastIndexOf('\n', start - 1) + 1;
+            var textBefore = value.substring(lineStart, start);
+            var spacesToRemove = 0;
+            for (var i = textBefore.length - 1; i >= 0 && i >= textBefore.length - 4; i--) {
+              if (textBefore[i] === ' ') spacesToRemove++;
+              else break;
+            }
+            if (spacesToRemove > 0) {
+              var removeStart = start - spacesToRemove;
+              textarea.value = value.substring(0, removeStart) + value.substring(start);
+              textarea.selectionStart = textarea.selectionEnd = removeStart;
+            }
+          } else {
+            // Selection: un-indent all selected lines
+            var lines = value.split('\n');
+            var lStart = 0, pos = 0;
+            for (var i = 0; i < lines.length; i++) {
+              if (pos >= start) break;
+              pos += lines[i].length + 1;
+              lStart++;
+            }
+            var lEnd = lStart; pos = 0;
+            for (var i = 0; i < lines.length; i++) {
+              if (pos >= end) break;
+              pos += lines[i].length + 1;
+              lEnd = i;
+            }
+            if (lEnd < lStart) lEnd = lStart;
+
+            var totalRemoved = 0;
+            for (var i = lStart; i <= lEnd; i++) {
+              if (lines[i].startsWith(INDENT)) {
+                lines[i] = lines[i].substring(INDENT.length);
+                totalRemoved += INDENT.length;
+              } else if (lines[i].startsWith('\t')) {
+                lines[i] = lines[i].substring(1);
+                totalRemoved += 1;
+              }
+            }
+            textarea.value = lines.join('\n');
+            textarea.selectionStart = Math.max(0, start - INDENT.length);
+            textarea.selectionEnd = Math.max(0, end - totalRemoved);
+          }
+          if (window.Editor && window.Editor.update) window.Editor.update();
+        });
+      }
+
+      // Auto-indent button
+      var btnAutoIndent = document.getElementById('btn-editor-autoindent');
+      if (btnAutoIndent) {
+        btnAutoIndent.addEventListener('click', function() {
+          textarea.focus();
+          var value = textarea.value;
+          var lines = value.split('\n');
+          var depth = 0;
+          var newLines = [];
+
+          for (var i = 0; i < lines.length; i++) {
+            var trimmed = lines[i].trim();
+            if (trimmed.length === 0) {
+              newLines.push('');
+              continue;
+            }
+
+            // Decrease indent for closing keywords
+            if (DECREASE_CURRENT.test(trimmed.toLowerCase())) {
+              depth = Math.max(0, depth - 1);
+            }
+
+            newLines.push(INDENT.repeat(depth) + trimmed);
+
+            // Increase indent for opening keywords
+            if (INCREASE_NEXT.test(trimmed.toLowerCase())) {
+              depth++;
+            }
+          }
+
+          textarea.value = newLines.join('\n');
+          textarea.selectionStart = textarea.selectionEnd = 0;
+          if (window.Editor && window.Editor.update) window.Editor.update();
+        });
+      }
+    });
+  })();
+  </script>
+
+  <!-- ============================================================
        MOBILE FLOATING BUTTONS + PANELS
        ============================================================ -->
   <!-- Floating Execution Button -->
@@ -1010,13 +1258,6 @@
       <button class="fab-menu-item" id="fab-clear">
         <span class="material-symbols-outlined">cleaning_services</span> Limpiar consola
       </button>
-      <div class="fab-menu-divider"></div>
-      <button class="fab-menu-item" id="fab-levels">
-        <span class="material-symbols-outlined">grid_view</span> Seleccionar nivel
-      </button>
-      <button class="fab-menu-item" id="fab-editor-link">
-        <span class="material-symbols-outlined">edit_note</span> Editor de niveles
-      </button>
     </div>
   </div>
 
@@ -1034,50 +1275,27 @@
   <div id="mobile-blocks-panel">
     <div class="mobile-blocks-header">
       <span class="material-symbols-outlined" style="color:#6c3483;font-size:20px;">extension</span>
-      <span class="title">Bloques y Controles</span>
+      <span class="title">Bloques</span>
       <button class="close-btn" id="mobile-blocks-close">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
-    <!-- Controls Section -->
+    <!-- Examples & Levels Section (non-execution) -->
     <div class="mobile-controls-section">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9c8749;">Ejecucion</div>
-      <div class="mobile-controls-row">
-        <button class="mobile-ctrl-btn play-btn" id="mob-play">
-          <span class="material-symbols-outlined">play_arrow</span> Ejecutar
-        </button>
-        <button class="mobile-ctrl-btn pause-btn" id="mob-pause">
-          <span class="material-symbols-outlined">pause</span>
-        </button>
-        <button class="mobile-ctrl-btn stop-btn" id="mob-stop">
-          <span class="material-symbols-outlined">stop</span>
-        </button>
-        <button class="mobile-ctrl-btn reset-btn" id="mob-reset">
-          <span class="material-symbols-outlined">restart_alt</span>
-        </button>
-      </div>
-      <div class="mobile-controls-row">
-        <button class="mobile-ctrl-btn step-btn" id="mob-step">
-          <span class="material-symbols-outlined">skip_next</span> Paso a paso
-        </button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#9c8749;margin-left:auto;">
-          <input type="checkbox" id="mob-step-mode" style="width:14px;height:14px;accent-color:#f4c025;" />
-          Modo paso
-        </label>
-      </div>
-      <div class="mobile-speed-row">
-        <span>Velocidad:</span>
-        <input type="range" id="mob-speed" min="50" max="800" value="550" />
-        <span id="mob-speed-lbl" style="font-weight:600;color:#f4c025;">300ms</span>
-      </div>
-      <div class="mobile-select-row">
-        <select id="mob-example-select"></select>
-        <button id="mob-btn-example" title="Cargar ejemplo">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9c8749;">Herramientas</div>
+      <div class="mobile-select-row" style="margin-top:8px;">
+        <select id="mob-example-select" style="flex:1;"></select>
+        <button id="mob-btn-example" title="Cargar ejemplo" style="padding:6px 10px;border-radius:8px;border:1px solid #e8e2ce;background:#f5f3ee;cursor:pointer;display:flex;align-items:center;">
           <span class="material-symbols-outlined" style="font-size:16px">upload_file</span>
         </button>
-        <button id="mob-btn-levels" title="Niveles">
-          <span class="material-symbols-outlined" style="font-size:16px">grid_view</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button id="mob-btn-levels" title="Niveles" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:8px;border:1px solid #e8e2ce;background:#f5f3ee;cursor:pointer;font-size:12px;font-weight:600;font-family:'Lexend',sans-serif;">
+          <span class="material-symbols-outlined" style="font-size:16px">grid_view</span> Niveles
         </button>
+        <a href="editor.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:8px;border:1px solid #e8e2ce;background:#f5f3ee;text-decoration:none;color:#1c180d;font-size:12px;font-weight:600;font-family:'Lexend',sans-serif;">
+          <span class="material-symbols-outlined" style="font-size:16px">edit_note</span> Editor
+        </a>
       </div>
     </div>
     <!-- Blocks Section -->
@@ -1271,15 +1489,6 @@
         triggerDesktopBtn('btn-clear-console');
         fabExecMenu.classList.remove('show');
       });
-      
-      document.getElementById('fab-levels').addEventListener('click', function() {
-        triggerDesktopBtn('btn-levels');
-        fabExecMenu.classList.remove('show');
-      });
-      
-      document.getElementById('fab-editor-link').addEventListener('click', function() {
-        window.location.href = 'editor.html';
-      });
 
       // ---- Mobile Blocks Panel ----
       const mobilePanel = document.getElementById('mobile-blocks-panel');
@@ -1362,39 +1571,7 @@
         });
       }
 
-      // ---- Mobile Controls Sync ----
-      document.getElementById('mob-play').addEventListener('click', function() {
-        triggerDesktopBtn('btn-run');
-      });
-      document.getElementById('mob-pause').addEventListener('click', function() {
-        triggerDesktopBtn('btn-pause');
-      });
-      document.getElementById('mob-stop').addEventListener('click', function() {
-        triggerDesktopBtn('btn-stop');
-      });
-      document.getElementById('mob-reset').addEventListener('click', function() {
-        triggerDesktopBtn('btn-reset');
-      });
-      document.getElementById('mob-step').addEventListener('click', function() {
-        const stepMode = document.getElementById('step-mode');
-        if (stepMode && !stepMode.checked) stepMode.checked = true;
-        const mobStepMode = document.getElementById('mob-step-mode');
-        if (mobStepMode) mobStepMode.checked = true;
-        triggerDesktopBtn('btn-run');
-      });
-      document.getElementById('mob-step-mode').addEventListener('change', function() {
-        const desktop = document.getElementById('step-mode');
-        if (desktop) desktop.checked = this.checked;
-      });
-      document.getElementById('mob-speed').addEventListener('input', function() {
-        const desktop = document.getElementById('game-speed');
-        if (desktop) desktop.value = this.value;
-        const lbl = document.getElementById('mob-speed-lbl');
-        const delay = Math.max(50, 850 - parseInt(this.value));
-        if (lbl) lbl.textContent = delay + 'ms';
-        const dLbl = document.getElementById('game-speed-lbl');
-        if (dLbl) dLbl.textContent = delay + 'ms';
-      });
+      // ---- Mobile Controls Sync (examples/levels only) ----
       document.getElementById('mob-example-select').addEventListener('change', function() {
         const desktop = document.getElementById('example-select');
         if (desktop) desktop.value = this.value;
